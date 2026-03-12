@@ -1,0 +1,630 @@
+Final Architecture (Personal Tool — Windows)
+Windows Task Scheduler (runs daily)
+         ↓
+redline/pipeline.py
+         ↓
+1. Poll SEC EDGAR for new filings (your watchlist tickers)
+         ↓
+2. Extract sections via sec-api.io (1A, 7, 3, 9A)
+         ↓
+3. Structural diff → JSON
+         ↓
+4. Pattern signal detection → appended to JSON
+         ↓
+5. GPT-OSS 20B via Ollama → reads JSON → outputs analysis
+         ↓
+6. Store everything in SQLite (redline.db)
+         ↓
+Simple local Flask webpage (localhost:5000)
+reads from redline.db → displays results
+No cloud. No auth. No Stripe. No Redis. No Celery. No PostgreSQL.
+Just Python + SQLite + Ollama + a minimal Flask UI. Entire thing runs on your Windows machine.
+
+Agent Task Specifications
+These are written so Opus 4.6 / Codex can execute them one at a time with zero ambiguity. Each task has a single responsibility, clear inputs, clear outputs, and explicit acceptance criteria.
+
+TASK 001 — Project Scaffold
+Agent: Codex
+Depends on: Nothing
+Description: Create the full project folder structure and dependency files
+Exact output required:
+redline/
+├── pipeline.py          # master orchestrator, entry point
+├── config.py            # all configuration in one place
+├── edgar.py             # SEC EDGAR polling
+├── extractor.py         # section extraction via sec-api.io
+├── differ.py            # structural diff engine
+├── signals.py           # pattern signal detector
+├── scorer.py            # preliminary score calculator
+├── analyzer.py          # GPT-OSS 20B via Ollama
+├── storage.py           # all SQLite read/write
+├── web/
+│   ├── app.py           # Flask app
+│   ├── templates/
+│   │   ├── index.html   # dashboard: list of all analyzed filings
+│   │   ├── company.html # all diffs for one company
+│   │   └── diff.html    # single diff detail view
+│   └── static/
+│       └── style.css    # minimal dark theme styles
+├── watchlist.json       # your list of tickers to monitor
+├── requirements.txt
+├── .env                 # SEC_API_KEY, OLLAMA_HOST, DB_PATH
+└── README.md
+requirements.txt must include:
+requests
+python-dotenv
+sec-api
+difflib2
+flask
+ollama
+pytest
+watchlist.json format:
+{
+  "tickers": ["AAPL", "TSLA", "NVDA"],
+  "form_types": ["10-K", "10-Q"],
+  "sections": ["1A", "7", "3", "9A"]
+}
+config.py must expose:
+SEC_API_KEY: str
+OLLAMA_HOST: str          # default "http://localhost:11434"
+OLLAMA_MODEL: str         # default "gpt-oss:20b"
+DB_PATH: str              # default "./redline.db"
+WATCHLIST_PATH: str       # default "./watchlist.json"
+MIN_PCT_CHANGED: float    # default 0.05 (5% change triggers LLM)
+PRELIMINARY_SCORE_LLM_THRESHOLD: int  # default 4
+Acceptance criteria:
+
+All files and folders exist
+python -c "from redline import config" runs without error
+.env is gitignored
+
+
+TASK 002 — SQLite Schema
+Agent: Opus 4.6
+Depends on: TASK 001
+File: redline/storage.py
+Description: Create and manage the SQLite database. All database logic lives exclusively in this file. No other file touches SQLite directly.
+Schema — exact tables required:
+CREATE TABLE IF NOT EXISTS companies (
+    cik         TEXT PRIMARY KEY,
+    ticker      TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL,
+    added_at    TEXT NOT NULL   -- ISO datetime
+);
+
+CREATE TABLE IF NOT EXISTS filings (
+    id                TEXT PRIMARY KEY,  -- accession number, dashes removed
+    cik               TEXT NOT NULL,
+    ticker            TEXT NOT NULL,
+    form_type         TEXT NOT NULL,     -- '10-K' or '10-Q'
+    period_of_report  TEXT NOT NULL,     -- 'YYYY-MM-DD'
+    filed_at          TEXT NOT NULL,     -- ISO datetime
+    filing_url        TEXT NOT NULL,
+    processed         INTEGER DEFAULT 0, -- 0 = not yet, 1 = done
+    created_at        TEXT NOT NULL,
+    FOREIGN KEY (cik) REFERENCES companies(cik)
+);
+
+CREATE TABLE IF NOT EXISTS sections (
+    id          TEXT PRIMARY KEY,   -- uuid4
+    filing_id   TEXT NOT NULL,
+    section     TEXT NOT NULL,      -- '1A', '7', '3', '9A'
+    raw_text    TEXT NOT NULL,
+    word_count  INTEGER NOT NULL,
+    created_at  TEXT NOT NULL,
+    FOREIGN KEY (filing_id) REFERENCES filings(id),
+    UNIQUE(filing_id, section)
+);
+
+CREATE TABLE IF NOT EXISTS diffs (
+    id                      TEXT PRIMARY KEY,   -- uuid4
+    current_filing_id       TEXT NOT NULL,
+    previous_filing_id      TEXT NOT NULL,
+    section                 TEXT NOT NULL,
+    pct_changed             REAL NOT NULL,
+    word_count_delta        INTEGER NOT NULL,
+    sentences_added         INTEGER NOT NULL,
+    sentences_removed       INTEGER NOT NULL,
+    diff_preview            TEXT NOT NULL,      -- compact +/- string
+    pattern_flags           TEXT NOT NULL,      -- JSON array as string
+    preliminary_score       INTEGER NOT NULL,
+    final_score             INTEGER,            -- null until LLM runs
+    llm_output              TEXT,               -- full JSON string from LLM
+    llm_processed           INTEGER DEFAULT 0,
+    created_at              TEXT NOT NULL,
+    FOREIGN KEY (current_filing_id) REFERENCES filings(id),
+    FOREIGN KEY (previous_filing_id) REFERENCES filings(id),
+    UNIQUE(current_filing_id, previous_filing_id, section)
+);
+Functions storage.py must expose:
+def init_db() -> None
+def upsert_company(cik, ticker, name) -> None
+def insert_filing(filing_dict) -> None
+def filing_exists(accession_number) -> bool
+def get_latest_filing(cik, form_type) -> dict | None
+def insert_section(filing_id, section, raw_text) -> None
+def get_section(filing_id, section) -> dict | None
+def insert_diff(diff_dict) -> None
+def update_diff_llm(diff_id, final_score, llm_output) -> None
+def get_all_diffs(limit=50) -> list[dict]
+def get_diffs_for_ticker(ticker) -> list[dict]
+def get_diff_by_id(diff_id) -> dict | None
+
+Acceptance criteria:
+- python -c "from redline.storage import init_db; init_db()" creates redline.db with all tables
+- All functions have type hints and docstrings
+- No raw SQL outside storage.py
+- All datetimes stored as ISO 8601 strings
+
+---
+
+TASK 003 — SEC EDGAR Poller
+Agent: Codex
+Depends on: TASK 002
+File: redline/edgar.py
+
+Description: Poll SEC EDGAR for new filings for a given ticker. Uses the free data.sec.gov API — no key required.
+
+API endpoints to use:
+
+# Get CIK from ticker:
+https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&ticker={ticker}&type=&dateb=&owner=include&count=1&search_text=&output=atom
+
+# Get submission history (all filings):
+https://data.sec.gov/submissions/CIK{cik_padded_to_10_digits}.json
+
+Functions required:
+def get_cik(ticker: str) -> str | None:
+    """Resolve ticker to CIK. Returns zero-padded 10-digit CIK string."""
+
+def get_recent_filings(cik: str, form_types: list[str]) -> list[dict]:
+    """
+    Returns list of filing dicts for given form types.
+    Each dict: {
+        accession_number: str,  # with dashes e.g. 0001234567-24-000001
+        form_type: str,
+        filed_at: str,          # ISO datetime
+        period_of_report: str,  # YYYY-MM-DD
+        filing_url: str,        # full EDGAR URL to primary document
+        cik: str,
+        ticker: str
+    }
+    """
+
+def get_new_filings(ticker: str, form_types: list[str]) -> list[dict]:
+    """
+    Cross-references get_recent_filings() against storage.filing_exists().
+    Returns only filings not yet in the database.
+    """
+Rate limiting: EDGAR requires max 10 requests/second and a User-Agent header in format YourName yourname@email.com. Must be set on all requests.
+Acceptance criteria:
+
+get_cik("AAPL") returns "0000320193"
+get_recent_filings("0000320193", ["10-K"]) returns at least 3 results
+get_new_filings returns empty list when all filings already stored
+All requests include proper User-Agent header
+Graceful handling of rate limits (429 response → sleep + retry)
+
+
+TASK 004 — Section Extractor
+Agent: Codex
+Depends on: TASK 003
+File: redline/extractor.py
+Description: Given a filing URL, extract specific sections as clean plain text using sec-api.io ExtractorAPI.
+Section code mapping:
+SECTION_MAP = {
+    "10-K": {
+        "1A": "Risk Factors",
+        "7":  "Management's Discussion and Analysis",
+        "3":  "Legal Proceedings",
+        "9A": "Controls and Procedures"
+    },
+    "10-Q": {
+        "1A": "part2item1a",   # sec-api uses different codes for 10-Q
+        "7":  "part1item2",
+        "3":  "part2item1",
+        "9A": "part1item4"
+    }
+}
+Functions required:
+def extract_section(
+    filing_url: str,
+    form_type: str,
+    section_code: str
+) -> str | None:
+    """
+    Returns clean plain text of the section.
+    Returns None if section not found or extraction fails.
+    """
+
+def extract_all_sections(
+    filing_url: str,
+    form_type: str,
+    section_codes: list[str]
+) -> dict[str, str]:
+    """
+    Returns dict of {section_code: text} for all successfully extracted sections.
+    Skips sections that return None.
+    """
+Acceptance criteria:
+
+extract_section(tesla_10k_url, "10-K", "1A") returns non-empty string
+Empty/missing sections return None, not an exception
+Text is plain text — no HTML tags
+Logs which sections succeeded and failed
+
+
+TASK 005 — Structural Differ
+Agent: Opus 4.6
+Depends on: TASK 001
+File: redline/differ.py
+Description: Pure Python. No external APIs. Compare two text strings at the sentence level and produce a structured diff result.
+Output dataclass:
+@dataclass
+class DiffResult:
+    pct_changed: float          # 0.0 to 1.0
+    word_count_old: int
+    word_count_new: int
+    word_count_delta: int       # positive = grew, negative = shrunk
+    sentences_added: int
+    sentences_removed: int
+    sentences_unchanged: int
+    diff_preview: str           # compact string, max 3000 chars
+                                # format: lines prefixed with + or -
+                                # only changed sentences, not unchanged
+    raw_chunks: list[dict]      # full diff for storage
+                                # each: {type, text} where type is
+                                # 'added'|'removed'|'unchanged'
+Algorithm requirements:
+
+Split text into sentences using period/newline boundaries
+Use difflib.SequenceMatcher at sentence level
+diff_preview includes only added/removed chunks, truncated to 3000 chars with [...truncated] marker if longer
+pct_changed = (sentences_added + sentences_removed) / max(total_old, total_new)
+
+Acceptance criteria:
+
+Identical texts return pct_changed=0.0, zero sentences added/removed
+Completely different texts return pct_changed=1.0
+diff_preview never exceeds 3000 chars
+100% unit test coverage for the DiffResult dataclass
+Test cases must include: identical, minor change, major change, one empty string
+
+
+TASK 006 — Pattern Signal Detector
+Agent: Opus 4.6
+Depends on: TASK 005
+File: redline/signals.py
+Description: Run hardcoded financial red flag detection on old and new text. Pure Python, no LLM.
+Signals to implement — exact list:
+SIGNALS = [
+    {
+        "id": "going_concern",
+        "label": "Going Concern Language Appeared",
+        "severity": 10,
+        "check": "phrase_appeared",
+        "phrase": "going concern"
+    },
+    {
+        "id": "material_weakness",
+        "label": "Material Weakness Disclosed",
+        "severity": 9,
+        "check": "phrase_appeared",
+        "phrase": "material weakness"
+    },
+    {
+        "id": "auditor_change",
+        "label": "Auditor Changed",
+        "severity": 9,
+        "check": "auditor_changed"
+        # detect by looking for Big 4 + major auditor names changing
+        # between old and new text
+    },
+    {
+        "id": "risk_factor_expansion",
+        "label": "Risk Factor Section Grew >20%",
+        "severity": 6,
+        "check": "word_count_increase",
+        "threshold": 0.20
+    },
+    {
+        "id": "legal_new_paragraph",
+        "label": "New Legal Proceedings Paragraph",
+        "severity": 8,
+        "check": "new_paragraph_appeared",
+        "section": "3"
+    },
+    {
+        "id": "hedging_increase",
+        "label": "Hedging Language Increased >25%",
+        "severity": 5,
+        "check": "phrase_frequency_increase",
+        "phrases": ["we believe", "we expect", "we anticipate",
+                    "we hope", "we intend", "we estimate"],
+        "threshold": 0.25
+    },
+    {
+        "id": "metric_disappeared",
+        "label": "Previously Reported Dollar Metric Disappeared",
+        "severity": 7,
+        "check": "dollar_metric_removed"
+        # find $X million / $X billion patterns in old not in new
+    },
+    {
+        "id": "related_party_new",
+        "label": "New Related Party Transaction Language",
+        "severity": 7,
+        "check": "phrase_appeared",
+        "phrase": "related party"
+    },
+    {
+        "id": "cybersecurity_incident",
+        "label": "Cybersecurity Incident Language Appeared",
+        "severity": 8,
+        "check": "phrase_appeared",
+        "phrase": "cybersecurity incident|data breach|unauthorized access"
+    },
+]
+Output dataclass:
+@dataclass
+class SignalResult:
+    triggered: bool
+    signals: list[dict]         # list of triggered signal dicts
+                                # each: {id, label, severity}
+    max_severity: int           # highest severity among triggered signals
+    flags_json: str             # JSON string of label list, for DB storage
+Acceptance criteria:
+
+Each signal has its own unit test with a text sample that triggers it
+Each signal has a unit test with a text sample that does NOT trigger it
+flags_json is valid JSON
+max_severity is 0 if no signals triggered
+
+
+TASK 007 — Preliminary Scorer
+Agent: Codex
+Depends on: TASK 005, TASK 006
+File: redline/scorer.py
+Description: Single function that produces a score 1–10 before the LLM runs. Gates whether LLM gets called at all.
+def preliminary_score(diff: DiffResult, signals: SignalResult) -> int:
+    """
+    Scoring logic:
+    
+    Base from structural diff (max 4 points):
+      pct_changed > 0.30 → +4
+      pct_changed > 0.15 → +3
+      pct_changed > 0.05 → +2
+      pct_changed > 0.01 → +1
+      else               → +0
+    
+    From signals (max 5 points):
+      max_severity >= 9  → +5
+      max_severity >= 7  → +4
+      max_severity >= 5  → +3
+      max_severity >= 3  → +2
+      triggered = True   → +1
+      else               → +0
+    
+    Minimum: 1. Maximum: 10. No float — return int.
+    """
+Acceptance criteria:
+
+Score is always between 1 and 10 inclusive
+Going concern signal always produces score >= 7
+Zero change + no signals always produces score = 1
+10 unit tests covering edge cases
+
+
+TASK 008 — GPT-OSS 20B Analyzer
+Agent: Opus 4.6
+Depends on: TASK 007
+File: redline/analyzer.py
+Description: Takes diff JSON, calls GPT-OSS 20B via Ollama, returns structured analysis. This is the core intelligence layer.
+Input to the function:
+def analyze(
+    ticker: str,
+    company_name: str,
+    form_type: str,
+    current_period: str,
+    previous_period: str,
+    section_name: str,
+    diff: DiffResult,
+    signals: SignalResult,
+    preliminary_score: int
+) -> dict | None:
+Reasoning level routing:
+def get_reasoning_level(score: int) -> str:
+    if score >= 8: return "high"
+    if score >= 5: return "medium"
+    return "low"
+
+System prompt — exact text:
+
+Reasoning: {reasoning_level}
+You are a forensic financial analyst reviewing SEC filing changes.
+Return ONLY valid JSON. No markdown. No explanation. No preamble. Just the JSON object.
+
+User prompt structure:
+
+COMPANY: {ticker} — {company_name}
+FILING: {form_type} | Current: {current_period} | Previous: {previous_period}
+SECTION: {section_name}
+
+METRICS:
+- Changed: {pct_changed:.1%}
+- Word delta: {word_count_delta:+d}
+- Sentences added: {sentences_added} | removed: {sentences_removed}
+
+SIGNALS TRIGGERED: {signals or "None"}
+
+DIFF PREVIEW:
+{diff_preview}
+
+Return this exact JSON structure:
+{
+  "severity_score": <1-10 integer>,
+  "severity_reasoning": "<one sentence>",
+  "notable_changes": [
+    {
+      "change_type": "<addition|deletion|modification|tone_shift|metric_disappeared>",
+      "old_text": "<max 150 chars>",
+      "new_text": "<max 150 chars>",
+      "significance": "<routine|notable|significant|critical>",
+      "investor_commentary": "<2-3 sentences what this means for investor>",
+      "red_flag": <true|false>
+    }
+  ],
+  "overall_summary": "<3-4 sentence plain English investor summary>",
+  "questions_raised": ["<question to ask management>"]
+}
+
+Only flag financially significant changes. Skip formatting, dates, boilerplate.
+If all changes are routine: severity_score=1, notable_changes=[].
+JSON extraction + validation:
+
+Strip markdown fences if model adds them
+Retry up to 3 times on invalid JSON
+Return None after 3 failures — pipeline continues without LLM output
+Validate all required keys present and severity_score is int 1–10
+
+Final score calculation:
+
+# If LLM succeeded:
+final_score = round((preliminary_score * 0.4) + (llm_severity * 0.6))
+final_score = max(1, min(10, final_score))
+
+# If LLM failed:
+final_score = preliminary_score
+Acceptance criteria:
+
+Works with gpt-oss:20b running in Ollama on localhost
+Returns valid dict on success, None on complete failure
+Never raises an exception — all errors caught and logged
+final_score always between 1 and 10
+
+
+TASK 009 — Master Pipeline
+Agent: Opus 4.6
+Depends on: All previous tasks
+File: redline/pipeline.py
+Description: Orchestrates the full pipeline end to end. This is the entry point for the cron job.
+Full flow:
+def run():
+    """
+    1. Load watchlist.json
+    2. init_db()
+    3. For each ticker in watchlist:
+       a. get_cik(ticker)
+       b. upsert_company(cik, ticker, name)
+       c. get_new_filings(ticker, form_types)
+       d. For each new filing:
+          i.   insert_filing(filing)
+          ii.  extract_all_sections(filing_url, form_type, sections)
+          iii. For each extracted section:
+               - insert_section(filing_id, section, text)
+               - get_section(previous_filing_id, section)
+               - if previous section exists:
+                   * diff = differ.diff(old_text, new_text)
+                   * signals = signals.detect(old_text, new_text)
+                   * prelim = scorer.preliminary_score(diff, signals)
+                   * if prelim >= LLM_THRESHOLD:
+                       llm_output = analyzer.analyze(...)
+                   * else:
+                       llm_output = None
+                   * final_score = compute_final_score(prelim, llm_output)
+                   * insert_diff(diff_dict)
+                   * if llm_output: update_diff_llm(diff_id, final_score, llm_output)
+               - else:
+                   log("No previous filing — stored as baseline")
+          iv. mark filing as processed
+    4. Log summary: X filings processed, Y diffs created, Z LLM analyses run
+"""
+
+if __name__ == "__main__":
+    run()
+Acceptance criteria:
+
+python -m redline.pipeline runs end to end with no unhandled exceptions
+Idempotent — running twice on same day produces no duplicate records
+Full logging at each step with timestamps
+Summary printed at end
+
+
+TASK 010 — Windows Task Scheduler Setup
+Agent: Codex
+Depends on: TASK 009
+File: scheduler/setup_task.ps1
+Description: PowerShell script that registers the pipeline as a daily Windows Task Scheduler job.
+
+# Runs pipeline.py every day at 7:00 AM
+# Logs output to logs/redline_YYYY-MM-DD.log
+$action = New-ScheduledTaskAction `
+    -Execute "python" `
+    -Argument "-m redline.pipeline >> logs\redline_$(Get-Date -Format 'yyyy-MM-dd').log 2>&1" `
+    -WorkingDirectory "C:\path\to\redline"
+
+$trigger = New-ScheduledTaskTrigger -Daily -At 7:00AM
+
+Register-ScheduledTask `
+    -TaskName "Redline Daily Pipeline" `
+    -Action $action `
+    -Trigger $trigger `
+    -RunLevel Highest
+
+
+TASK 011 — Flask Web UI
+Agent: Opus 4.6
+Depends on: TASK 002, TASK 009
+Files: redline/web/app.py, templates
+
+Three pages:
+
+/ — Dashboard
+- Table of all diffs, newest first
+- Columns: Ticker | Section | Period | Final Score | Red Flags | Date
+- Score displayed as colored chip: green (1-3), yellow (4-6), orange (7-8), red (9-10)
+- Clicking any row goes to /diff/<diff_id>
+- Filter by ticker (dropdown)
+
+/company/<ticker> — Company View
+- All diffs for that ticker
+- Timeline showing score trend across filings
+- Each row: filing period | section | score | top signal
+
+/diff/<diff_id> — Diff Detail
+- Company + filing metadata header
+- Final score chip (large, prominent)
+- Pattern signals triggered (badges)
+- The diff preview rendered with color: green lines = added, red lines = removed
+- GPT-OSS analysis below:
+  - Overall summary
+  - Notable changes list (each with old text | new text | commentary)
+  - Questions raised
+- If LLM didn't run: show "Score below LLM threshold — structural analysis only"
+
+Design: Dark background (#1a1a1a), red accent (#c0392b), monospace font for diff blocks, Inter for prose. Minimal. Dense. No external CSS frameworks — pure CSS in style.css.
+
+Acceptance criteria:
+- python -m redline.web.app starts on localhost:5000
+- Dashboard loads and shows all diffs from SQLite
+- Diff detail page renders correctly for both LLM-processed and non-LLM diffs
+- Works with zero JavaScript frameworks — plain HTML + CSS only
+
+Build Order for Agent Teams
+
+TASK 001 (scaffold)
+    ↓
+TASK 002 (SQLite) ←→ TASK 005 (differ)
+    ↓                      ↓
+TASK 003 (EDGAR)      TASK 006 (signals)
+    ↓                      ↓
+TASK 004 (extractor)  TASK 007 (scorer)
+    ↓                      ↓
+         TASK 008 (analyzer)
+                ↓
+         TASK 009 (pipeline)
+          ↙          ↘
+TASK 010 (scheduler)  TASK 011 (web UI)
+Tasks 002+005 and 003+004 can run in parallel. Everything else is sequential.
+
+That's the complete agent-ready spec. Every task has a single owner, zero ambiguity, explicit acceptance criteria, and clear dependencies.

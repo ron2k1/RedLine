@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ticker }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> / <span>{{ ticker }}</span>
+    </div>
+    <h1>{{ ticker }}</h1>
+    <p class="page-subtitle">All filings and extraction status</p>
+</div>
+
+{% if filings %}
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Period</th>
+                <th>Form</th>
+                <th>Filed</th>
+                <th>Status</th>
+                <th>Extractions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in filings %}
+            <tr>
+                <td>{{ f.period_of_report }}</td>
+                <td>{{ f.form_type }}</td>
+                <td class="date-cell">{{ f.filed_at[:10] }}</td>
+                <td>
+                    {% if f.processed %}
+                        <span class="status-badge status-processed">Processed</span>
+                    {% else %}
+                        <span class="status-badge status-pending">Pending</span>
+                    {% endif %}
+                </td>
+                <td class="extractions-cell">
+                    {% if f.extractions %}
+                        {% for ext in f.extractions %}
+                            <span class="extraction-badge {{ ext.status|extraction_class }}" title="{{ ext.section }}: {{ ext.status }}{% if ext.error_msg %} - {{ ext.error_msg }}{% endif %}">
+                                {{ ext.section }}
+                            </span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="no-extractions">No extractions</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">---</div>
+    <h2>No filings found for {{ ticker }}</h2>
+    <p>Make sure {{ ticker }} is in your watchlist and run the pipeline.</p>
+</div>
+{% endif %}
+{% endblock %}

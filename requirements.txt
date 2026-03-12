@@ -1,0 +1,8 @@
+requests
+python-dotenv
+edgartools
+flask
+ollama
+instructor
+pydantic
+pytest

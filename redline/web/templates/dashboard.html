@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <p class="page-subtitle">Recent filing diffs, color-coded by severity score</p>
+</div>
+
+<div class="filter-bar">
+    <form method="get" action="{{ url_for('dashboard') }}" class="filter-form">
+        <label for="ticker-select">Filter by ticker:</label>
+        <select name="ticker" id="ticker-select" onchange="this.form.submit()">
+            <option value="">All tickers</option>
+            {% for t in tickers %}
+                <option value="{{ t }}" {% if t == current_ticker %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit" class="btn btn-sm">Apply</button></noscript>
+    </form>
+</div>
+
+{% if diffs %}
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Form</th>
+                <th>Period</th>
+                <th>Section</th>
+                <th>% Changed</th>
+                <th>Score</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in diffs %}
+            <tr class="clickable-row" onclick="window.location='{{ url_for('diff_detail', diff_id=d.id) }}'">
+                <td>
+                    <a href="{{ url_for('company', ticker=d.ticker) }}" class="ticker-link" onclick="event.stopPropagation()">{{ d.ticker }}</a>
+                </td>
+                <td>{{ d.form_type }}</td>
+                <td>{{ d.period_of_report }}</td>
+                <td><span class="section-tag">{{ d.section }}</span></td>
+                <td>{{ d.pct_changed|pct }}</td>
+                <td>
+                    {% set display_score = d.final_score if d.final_score is not none else d.preliminary_score %}
+                    <span class="score-badge {{ display_score|score_class }}">{{ display_score }}</span>
+                    {% if d.final_score is none %}
+                        <span class="score-label">prelim</span>
+                    {% endif %}
+                </td>
+                <td class="date-cell">{{ d.created_at[:10] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">---</div>
+    <h2>No diffs yet</h2>
+    <p>Run the pipeline to start detecting filing changes.</p>
+    <code class="empty-cmd">python -m redline.pipeline</code>
+</div>
+{% endif %}
+{% endblock %}

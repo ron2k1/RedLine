@@ -1,0 +1,13 @@
+.env
+redline.db
+redline.db-wal
+redline.db-shm
+__pycache__/
+logs/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Watchlist{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Watchlist</h1>
+    <p class="page-subtitle">Manage the tickers monitored by Redline</p>
+</div>
+
+<div class="watchlist-add">
+    <form method="post" action="{{ url_for('watchlist_page') }}" class="add-form">
+        <input type="hidden" name="action" value="add">
+        <input type="text" name="ticker" placeholder="Enter ticker (e.g. AAPL, BRK.B)" class="input-ticker" required
+               pattern="[A-Za-z]{1,5}([.\-][A-Za-z]{1,2})?" title="1-5 letters, optional .X or -X suffix">
+        <button type="submit" class="btn btn-primary">Add Ticker</button>
+    </form>
+</div>
+
+{% if tickers %}
+<div class="watchlist-grid">
+    {% for t in tickers %}
+    <div class="watchlist-card">
+        <div class="watchlist-ticker">
+            <a href="{{ url_for('company', ticker=t) }}">{{ t }}</a>
+        </div>
+        <form method="post" action="{{ url_for('watchlist_page') }}" class="remove-form">
+            <input type="hidden" name="action" value="remove">
+            <input type="hidden" name="ticker" value="{{ t }}">
+            <button type="submit" class="btn btn-remove" title="Remove {{ t }}">Remove</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">---</div>
+    <h2>No tickers in watchlist</h2>
+    <p>Add a ticker above to start monitoring SEC filings.</p>
+</div>
+{% endif %}
+{% endblock %}

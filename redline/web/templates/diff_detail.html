@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Diff: {{ diff.ticker }} {{ diff.section }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        / <a href="{{ url_for('company', ticker=diff.ticker) }}">{{ diff.ticker }}</a>
+        / <span>Diff {{ diff.section }}</span>
+    </div>
+    <h1>{{ diff.ticker }} &mdash; Section {{ diff.section }}</h1>
+    <p class="page-subtitle">{{ diff.form_type }} | Period: {{ diff.period_of_report }}</p>
+</div>
+
+<div class="diff-overview">
+    <div class="overview-cards">
+        <div class="overview-card">
+            <div class="overview-label">Score</div>
+            {% set display_score = diff.final_score if diff.final_score is not none else diff.preliminary_score %}
+            <div class="overview-value score-badge score-badge-lg {{ display_score|score_class }}">{{ display_score }}</div>
+            <div class="overview-note">
+                {% if diff.final_score is not none %}
+                    Final (prelim: {{ diff.preliminary_score }})
+                {% else %}
+                    Preliminary
+                {% endif %}
+            </div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">% Changed</div>
+            <div class="overview-value">{{ diff.pct_changed|pct }}</div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">Words</div>
+            <div class="overview-value">{{ diff.word_count_old }} &rarr; {{ diff.word_count_new }}</div>
+            <div class="overview-note">
+                {% if diff.word_count_delta > 0 %}+{% endif %}{{ diff.word_count_delta }} words
+            </div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">Sentences</div>
+            <div class="overview-value sentences-summary">
+                <span class="sent-added" title="Added">+{{ diff.sentences_added }}</span>
+                <span class="sent-removed" title="Removed">-{{ diff.sentences_removed }}</span>
+                <span class="sent-unchanged" title="Unchanged">={{ diff.sentences_unchanged }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if diff.flags_json and diff.flags_json != "[]" %}
+<div class="detail-section">
+    <h2>Flags / Signals</h2>
+    <div class="flags-container">
+        <pre class="flags-json">{{ diff.flags_json }}</pre>
+    </div>
+</div>
+{% endif %}
+
+{% if diff.llm_output %}
+<div class="detail-section">
+    <h2>LLM Analysis</h2>
+    <div class="llm-output">
+        {{ diff.llm_output }}
+    </div>
+</div>
+{% endif %}
+
+{% if diff.diff_preview %}
+<div class="detail-section">
+    <h2>Diff Preview</h2>
+    <div class="diff-display">
+        {%- for line in diff.diff_preview.split('\n') -%}
+            {%- if line.startswith('+') -%}
+                <div class="diff-line diff-added">{{ line }}</div>
+            {%- elif line.startswith('-') -%}
+                <div class="diff-line diff-removed">{{ line }}</div>
+            {%- else -%}
+                <div class="diff-line diff-context">{{ line }}</div>
+            {%- endif -%}
+        {%- endfor -%}
+    </div>
+</div>
+{% endif %}
+
+{% if extractions %}
+<div class="detail-section">
+    <h2>Extraction Status (same filing)</h2>
+    <div class="extraction-list">
+        {% for ext in extractions %}
+        <div class="extraction-item">
+            <span class="extraction-badge {{ ext.status|extraction_class }}">{{ ext.section }}</span>
+            <span class="extraction-status">{{ ext.status }}</span>
+            {% if ext.error_msg %}
+                <span class="extraction-error">{{ ext.error_msg }}</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
