@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from difflib import SequenceMatcher
 
-from redline.models import DiffResult
+from redline.core.models import DiffResult
 
 _SENT_RE = re.compile(r"(?<=[.!?])(?:\s+|$)")
 

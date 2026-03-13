@@ -1,7 +1,7 @@
 """Tests for redline.differ — sentence-level structural diffing."""
 
-from redline.differ import diff_sections
-from redline.models import DiffResult
+from redline.analysis.differ import diff_sections
+from redline.core.models import DiffResult
 
 
 def test_identical_texts():

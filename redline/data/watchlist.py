@@ -3,7 +3,7 @@ import os
 import re
 import tempfile
 
-from redline import config
+from redline.core import config
 
 TICKER_PATTERN = re.compile(r'^[A-Z]{1,5}([.\-][A-Z]{1,2})?$')
 

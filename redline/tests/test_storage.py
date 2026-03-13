@@ -4,8 +4,8 @@ import os
 import tempfile
 import pytest
 
-from redline import config
-from redline import storage
+from redline.core import config
+from redline.data import storage
 
 
 @pytest.fixture(autouse=True)

@@ -7,10 +7,20 @@ used by all three paths (backfill, daily, resume).
 import json
 import logging
 
-from redline import config, storage, edgar, extractor, differ, signals, scorer, analyzer, watchlist
-from redline.models import FilingRecord
+from redline.core import config
+from redline.core.models import FilingRecord
+from redline.data import storage, watchlist
+from redline.ingestion import edgar, extractor
+from redline.ingestion.extractor import SECTION_MAP_10K, SECTION_MAP_10Q
+from redline.analysis import differ, signals, scorer, analyzer
 
 logger = logging.getLogger(__name__)
+
+
+def _sections_for_form(form_type: str, all_sections: list[str]) -> list[str]:
+    """Filter section codes to only those valid for the given form type."""
+    section_map = SECTION_MAP_10K if form_type.upper().startswith("10-K") else SECTION_MAP_10Q
+    return [s for s in all_sections if s in section_map]
 
 
 def _filing_record_from_dict(d: dict) -> FilingRecord:
@@ -161,7 +171,7 @@ def run() -> None:
     storage.init_db()
 
     watchlist_data = watchlist.load()
-    section_codes = watchlist_data.get("sections", ["1A", "7", "3", "9A"])
+    all_section_codes = watchlist_data.get("sections", ["1A", "7", "3", "9A"])
     form_types = watchlist_data.get("form_types", ["10-K", "10-Q"])
 
     # 1. Resume any stranded filings from prior crashed runs
@@ -171,7 +181,8 @@ def run() -> None:
                     len(unprocessed))
         for filing_dict in unprocessed:
             filing = _filing_record_from_dict(filing_dict)
-            process_filing(filing, section_codes)
+            codes = _sections_for_form(filing.form_type, all_section_codes)
+            process_filing(filing, codes)
 
     # 2. Normal polling / backfill per ticker
     tickers = watchlist_data.get("tickers", [])
@@ -209,7 +220,8 @@ def run() -> None:
                     continue
 
                 storage.insert_filing(filing.filing_id, _filing_record_to_dict(filing))
-                process_filing(filing, section_codes)
+                codes = _sections_for_form(filing.form_type, all_section_codes)
+                process_filing(filing, codes)
                 total_new += 1
 
     logger.info("=== Pipeline complete. %d new filings processed. ===", total_new)

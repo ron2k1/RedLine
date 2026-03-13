@@ -10,8 +10,8 @@ import logging
 import requests
 from datetime import datetime, timedelta
 
-from redline import config
-from redline.models import FilingRecord
+from redline.core import config
+from redline.core.models import FilingRecord
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ def get_new_filings(ticker: str,
     )
 
     # Lazy import to avoid circular imports
-    from redline import storage
+    from redline.data import storage
 
     new_filings = [
         f for f in filings

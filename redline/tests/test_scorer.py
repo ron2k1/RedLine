@@ -2,8 +2,8 @@
 
 import pytest
 
-from redline.models import DiffResult, SignalResult
-from redline.scorer import final_score, preliminary_score
+from redline.core.models import DiffResult, SignalResult
+from redline.analysis.scorer import final_score, preliminary_score
 
 
 # ---------------------------------------------------------------------------

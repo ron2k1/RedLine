@@ -1,1 +1,1 @@
-{"tickers": ["AAPL", "TSLA", "NVDA"], "form_types": ["10-K", "10-Q"], "sections": ["1A", "7", "3", "9A"]}
+{"tickers": ["AAPL", "TSLA", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "JPM", "GS", "BAC", "PFE", "JNJ", "XOM", "BA", "COIN", "SMCI", "PLTR", "AMD", "NFLX", "DIS"], "form_types": ["10-K", "10-Q"], "sections": ["1A", "7", "3", "9A"]}

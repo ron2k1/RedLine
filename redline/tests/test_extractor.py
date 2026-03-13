@@ -2,8 +2,8 @@
 
 from unittest.mock import patch, MagicMock
 
-from redline.extractor import extract_section, extract_all_sections
-from redline.models import FilingRecord, ExtractionResult
+from redline.ingestion.extractor import extract_section, extract_all_sections
+from redline.core.models import FilingRecord, ExtractionResult
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ _EMPTY_HTML = """
 # Tests
 # ---------------------------------------------------------------------------
 
-@patch("redline.extractor.requests.get")
+@patch("redline.ingestion.extractor.requests.get")
 def test_success_extraction(mock_get):
     """Successful extraction returns status='success' with clean plain text."""
     mock_resp = MagicMock()
@@ -84,7 +84,7 @@ def test_success_extraction(mock_get):
     assert result.section_code == "1A"
 
 
-@patch("redline.extractor.requests.get")
+@patch("redline.ingestion.extractor.requests.get")
 def test_not_found_no_matching_section(mock_get):
     """When the target section doesn't exist in the HTML, status='not_found'."""
     mock_resp = MagicMock()
@@ -99,7 +99,7 @@ def test_not_found_no_matching_section(mock_get):
     assert result.text is None
 
 
-@patch("redline.extractor.requests.get")
+@patch("redline.ingestion.extractor.requests.get")
 def test_failed_on_request_exception(mock_get):
     """When requests.get raises, status='failed' with error_msg set."""
     mock_get.side_effect = ConnectionError("Network unreachable")
@@ -113,7 +113,7 @@ def test_failed_on_request_exception(mock_get):
     assert "Network unreachable" in result.error_msg
 
 
-@patch("redline.extractor.requests.get")
+@patch("redline.ingestion.extractor.requests.get")
 def test_no_html_tags_in_output(mock_get):
     """Extracted text must not contain HTML angle brackets."""
     mock_resp = MagicMock()
@@ -129,7 +129,7 @@ def test_no_html_tags_in_output(mock_get):
     assert ">" not in result.text
 
 
-@patch("redline.extractor.requests.get")
+@patch("redline.ingestion.extractor.requests.get")
 def test_extract_all_sections(mock_get):
     """extract_all_sections returns one ExtractionResult per code."""
     mock_resp = MagicMock()
@@ -148,7 +148,7 @@ def test_extract_all_sections(mock_get):
     assert returned_codes == codes
 
 
-@patch("redline.extractor.requests.get")
+@patch("redline.ingestion.extractor.requests.get")
 def test_unmapped_section_code(mock_get):
     """A section code not in the map yields status='not_found' with error_msg."""
     mock_resp = MagicMock()
@@ -165,9 +165,9 @@ def test_unmapped_section_code(mock_get):
     assert "not mapped" in result.error_msg
 
 
-@patch("redline.extractor.requests.get")
+@patch("redline.ingestion.extractor.requests.get")
 def test_10q_uses_correct_section_map(mock_get):
-    """A 10-Q filing uses SECTION_MAP_10Q, so section code '2' is valid."""
+    """A 10-Q filing uses SECTION_MAP_10Q; conceptual code '7' (MD&A) maps to Item 2."""
     html_10q = """
     <html><body>
     <h2>Item 2. Management's Discussion and Analysis</h2>
@@ -184,8 +184,9 @@ def test_10q_uses_correct_section_map(mock_get):
     mock_get.return_value = mock_resp
 
     filing = _make_filing(form_type="10-Q")
-    result = extract_section(filing, "2")
+    result = extract_section(filing, "7")
 
     assert result.status == "success"
+    assert result.section_code == "7"
     assert result.text is not None
     assert "revenue" in result.text.lower()

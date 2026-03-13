@@ -53,7 +53,7 @@
 <div class="detail-section">
     <h2>Flags / Signals</h2>
     <div class="flags-container">
-        <pre class="flags-json">{{ diff.flags_json }}</pre>
+        <pre class="flags-json">{{ diff.flags_json|pretty_json }}</pre>
     </div>
 </div>
 {% endif %}
@@ -62,7 +62,7 @@
 <div class="detail-section">
     <h2>LLM Analysis</h2>
     <div class="llm-output">
-        {{ diff.llm_output }}
+        <pre class="llm-json">{{ diff.llm_output|pretty_json }}</pre>
     </div>
 </div>
 {% endif %}

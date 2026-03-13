@@ -6,8 +6,9 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 
-from redline import config, storage
-from redline.models import FilingRecord, ExtractionResult, DiffResult, SignalResult
+from redline.core import config
+from redline.core.models import FilingRecord, ExtractionResult, DiffResult, SignalResult
+from redline.data import storage
 
 
 @pytest.fixture(autouse=True)

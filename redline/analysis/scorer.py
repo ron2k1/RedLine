@@ -7,7 +7,7 @@ Two entry points:
 
 from __future__ import annotations
 
-from redline.models import DiffResult, SignalResult
+from redline.core.models import DiffResult, SignalResult
 
 
 def preliminary_score(diff: DiffResult, signals: SignalResult) -> int:

@@ -7,11 +7,15 @@ Routes:
   /watchlist         CRUD via watchlist.py module
 """
 
+import json
+import os
+
 from flask import Flask, render_template, request, redirect, url_for, flash
-from redline import storage, watchlist
+from markupsafe import Markup
+from redline.data import storage, watchlist
 
 app = Flask(__name__)
-app.secret_key = "redline-dev-key"
+app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24).hex())
 
 
 @app.template_filter("score_class")
@@ -30,10 +34,10 @@ def score_class_filter(score):
 
 @app.template_filter("pct")
 def pct_filter(value):
-    """Format a float as a percentage string."""
+    """Format a ratio (0.0–1.0+) as a percentage string."""
     if value is None:
         return "N/A"
-    return f"{value:.1f}%"
+    return f"{value * 100:.1f}%"
 
 
 @app.template_filter("extraction_class")
@@ -45,6 +49,18 @@ def extraction_class_filter(status):
         return "badge-failed"
     else:
         return "badge-notfound"
+
+
+@app.template_filter("pretty_json")
+def pretty_json_filter(value):
+    """Parse a JSON string and return indented, readable HTML."""
+    if not value:
+        return ""
+    try:
+        parsed = json.loads(value)
+        return json.dumps(parsed, indent=2)
+    except (json.JSONDecodeError, TypeError):
+        return str(value)
 
 
 @app.route("/")
@@ -105,4 +121,8 @@ def watchlist_page():
 
 if __name__ == "__main__":
     storage.init_db()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(
+        debug=os.getenv("FLASK_DEBUG", "false").lower() == "true",
+        host="127.0.0.1",
+        port=5000,
+    )

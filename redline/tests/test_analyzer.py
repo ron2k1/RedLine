@@ -6,7 +6,7 @@ All external calls are mocked; no real Ollama instance is needed.
 import pytest
 from unittest.mock import patch, MagicMock
 
-from redline.analyzer import AnalysisResponse, NotableChange, analyze_diff
+from redline.analysis.analyzer import AnalysisResponse, NotableChange, analyze_diff
 
 
 # ---------------------------------------------------------------------------
@@ -47,8 +47,8 @@ _CALL_KWARGS = dict(
 class TestAnalyzeDiffSuccess:
     """Mock the OpenAI client so instructor returns a valid AnalysisResponse."""
 
-    @patch("redline.analyzer.OpenAI")
-    @patch("redline.analyzer.instructor.from_openai")
+    @patch("redline.analysis.analyzer.OpenAI")
+    @patch("redline.analysis.analyzer.instructor.from_openai")
     def test_returns_dict_with_expected_keys(self, mock_from_openai, mock_openai_cls):
         # Arrange: make the patched client return our mock response
         mock_patched = MagicMock()
@@ -65,8 +65,8 @@ class TestAnalyzeDiffSuccess:
         assert "severity_score" in result
         assert "reasoning" in result
 
-    @patch("redline.analyzer.OpenAI")
-    @patch("redline.analyzer.instructor.from_openai")
+    @patch("redline.analysis.analyzer.OpenAI")
+    @patch("redline.analysis.analyzer.instructor.from_openai")
     def test_severity_score_is_int_in_range(self, mock_from_openai, mock_openai_cls):
         mock_patched = MagicMock()
         mock_from_openai.return_value = mock_patched
@@ -77,8 +77,8 @@ class TestAnalyzeDiffSuccess:
         assert isinstance(result["severity_score"], int)
         assert 1 <= result["severity_score"] <= 10
 
-    @patch("redline.analyzer.OpenAI")
-    @patch("redline.analyzer.instructor.from_openai")
+    @patch("redline.analysis.analyzer.OpenAI")
+    @patch("redline.analysis.analyzer.instructor.from_openai")
     def test_reasoning_is_populated(self, mock_from_openai, mock_openai_cls):
         mock_patched = MagicMock()
         mock_from_openai.return_value = mock_patched
@@ -89,8 +89,8 @@ class TestAnalyzeDiffSuccess:
         assert result["reasoning"]
         assert len(result["reasoning"]) > 0
 
-    @patch("redline.analyzer.OpenAI")
-    @patch("redline.analyzer.instructor.from_openai")
+    @patch("redline.analysis.analyzer.OpenAI")
+    @patch("redline.analysis.analyzer.instructor.from_openai")
     def test_notable_changes_are_dicts(self, mock_from_openai, mock_openai_cls):
         mock_patched = MagicMock()
         mock_from_openai.return_value = mock_patched
@@ -109,8 +109,8 @@ class TestAnalyzeDiffSuccess:
 class TestAnalyzeDiffFailure:
     """LLM errors must be caught and return None."""
 
-    @patch("redline.analyzer.OpenAI")
-    @patch("redline.analyzer.instructor.from_openai")
+    @patch("redline.analysis.analyzer.OpenAI")
+    @patch("redline.analysis.analyzer.instructor.from_openai")
     def test_returns_none_on_exception(self, mock_from_openai, mock_openai_cls):
         mock_patched = MagicMock()
         mock_from_openai.return_value = mock_patched
@@ -120,8 +120,8 @@ class TestAnalyzeDiffFailure:
 
         assert result is None
 
-    @patch("redline.analyzer.OpenAI")
-    @patch("redline.analyzer.instructor.from_openai")
+    @patch("redline.analysis.analyzer.OpenAI")
+    @patch("redline.analysis.analyzer.instructor.from_openai")
     def test_no_exception_propagated(self, mock_from_openai, mock_openai_cls):
         mock_patched = MagicMock()
         mock_from_openai.return_value = mock_patched
@@ -131,7 +131,7 @@ class TestAnalyzeDiffFailure:
         result = analyze_diff(**_CALL_KWARGS)
         assert result is None
 
-    @patch("redline.analyzer.OpenAI", side_effect=Exception("cannot create client"))
+    @patch("redline.analysis.analyzer.OpenAI", side_effect=Exception("cannot create client"))
     def test_client_creation_failure(self, mock_openai_cls):
         """Even if OpenAI() constructor blows up, we get None."""
         result = analyze_diff(**_CALL_KWARGS)

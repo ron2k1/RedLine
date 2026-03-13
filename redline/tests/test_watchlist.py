@@ -2,7 +2,8 @@ import json
 import os
 import tempfile
 import pytest
-from redline import watchlist, config
+from redline.data import watchlist
+from redline.core import config
 
 
 @pytest.fixture(autouse=True)

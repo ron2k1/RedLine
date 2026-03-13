@@ -8,7 +8,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timezone
 
-from redline import config
+from redline.core import config
 
 
 def _connect() -> sqlite3.Connection:
@@ -79,7 +79,8 @@ def init_db():
             llm_output      TEXT,
             created_at      TEXT NOT NULL,
             FOREIGN KEY (filing_id) REFERENCES filings(id),
-            FOREIGN KEY (prev_filing_id) REFERENCES filings(id)
+            FOREIGN KEY (prev_filing_id) REFERENCES filings(id),
+            UNIQUE(filing_id, prev_filing_id, section)
         );
 
         CREATE TABLE IF NOT EXISTS extraction_attempts (
@@ -275,12 +276,16 @@ def get_extraction_attempts(filing_id: str) -> list[dict]:
 
 
 def insert_diff(diff_dict: dict):
-    """Insert a diff record. Uses uuid4 for id if not provided."""
+    """Insert a diff record. Uses uuid4 for id if not provided.
+
+    UNIQUE(filing_id, prev_filing_id, section) prevents duplicates on
+    crash-retry — INSERT OR REPLACE safely overwrites a prior partial row.
+    """
     diff_id = diff_dict.get("id", str(uuid.uuid4()))
     conn = _connect()
     try:
         conn.execute(
-            "INSERT INTO diffs "
+            "INSERT OR REPLACE INTO diffs "
             "(id, filing_id, prev_filing_id, section, ticker, form_type, "
             "period_of_report, pct_changed, word_count_old, word_count_new, "
             "word_count_delta, sentences_added, sentences_removed, "

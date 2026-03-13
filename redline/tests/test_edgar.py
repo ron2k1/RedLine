@@ -6,7 +6,7 @@ All HTTP calls are mocked; no real EDGAR requests are made.
 from unittest.mock import patch, MagicMock, call
 import pytest
 
-from redline.models import FilingRecord
+from redline.core.models import FilingRecord
 
 
 # ---------------------------------------------------------------------------
@@ -67,12 +67,12 @@ def _mock_response(json_data=None, status_code=200):
 class TestGetCik:
     """Tests for get_cik()."""
 
-    @patch("redline.edgar._get")
+    @patch("redline.ingestion.edgar._get")
     def test_returns_3_tuple(self, mock_get):
         """get_cik returns (cik_padded, company_name, canonical_ticker)."""
         mock_get.return_value = _mock_response(MOCK_COMPANY_TICKERS)
 
-        from redline.edgar import get_cik
+        from redline.ingestion.edgar import get_cik
 
         result = get_cik("AAPL")
         assert result is not None
@@ -81,12 +81,12 @@ class TestGetCik:
         assert name == "Apple Inc."
         assert ticker == "AAPL"
 
-    @patch("redline.edgar._get")
+    @patch("redline.ingestion.edgar._get")
     def test_normalizes_dot_to_dash(self, mock_get):
         """get_cik normalizes BRK.B to BRK-B for lookup."""
         mock_get.return_value = _mock_response(MOCK_COMPANY_TICKERS)
 
-        from redline.edgar import get_cik
+        from redline.ingestion.edgar import get_cik
 
         result = get_cik("BRK.B")
         assert result is not None
@@ -95,12 +95,12 @@ class TestGetCik:
         assert name == "BERKSHIRE HATHAWAY INC"
         assert ticker == "BRK-B"
 
-    @patch("redline.edgar._get")
+    @patch("redline.ingestion.edgar._get")
     def test_returns_none_for_unknown(self, mock_get):
         """get_cik returns None for unknown ticker."""
         mock_get.return_value = _mock_response(MOCK_COMPANY_TICKERS)
 
-        from redline.edgar import get_cik
+        from redline.ingestion.edgar import get_cik
 
         result = get_cik("ZZZZZ")
         assert result is None
@@ -109,15 +109,15 @@ class TestGetCik:
 class TestGetFunction:
     """Tests for _get() HTTP helper."""
 
-    @patch("redline.edgar.time")
-    @patch("redline.edgar.requests.get")
+    @patch("redline.ingestion.edgar.time")
+    @patch("redline.ingestion.edgar.requests.get")
     def test_sends_user_agent(self, mock_requests_get, mock_time):
         """_get sends the correct User-Agent header."""
         mock_time.time.return_value = 999.0  # bypass rate limiting
         mock_resp = _mock_response({"data": 1})
         mock_requests_get.return_value = mock_resp
 
-        from redline.edgar import _get
+        from redline.ingestion.edgar import _get
 
         _get("https://example.com/test")
 
@@ -126,8 +126,8 @@ class TestGetFunction:
         headers = call_kwargs[1].get("headers") or call_kwargs.kwargs.get("headers")
         assert "User-Agent" in headers
 
-    @patch("redline.edgar.time")
-    @patch("redline.edgar.requests.get")
+    @patch("redline.ingestion.edgar.time")
+    @patch("redline.ingestion.edgar.requests.get")
     def test_retries_on_429(self, mock_requests_get, mock_time):
         """_get retries with exponential backoff on 429 responses."""
         mock_time.time.return_value = 999.0  # bypass rate limiting
@@ -141,7 +141,7 @@ class TestGetFunction:
 
         mock_requests_get.side_effect = [resp_429, resp_ok]
 
-        from redline.edgar import _get
+        from redline.ingestion.edgar import _get
 
         result = _get("https://example.com/test", max_retries=3)
         assert result.status_code == 200
@@ -153,7 +153,7 @@ class TestGetFunction:
 class TestGetRecentFilings:
     """Tests for get_recent_filings()."""
 
-    @patch("redline.edgar._get")
+    @patch("redline.ingestion.edgar._get")
     def test_follows_files_array_for_pagination(self, mock_get):
         """get_recent_filings follows files array to get older filings."""
         main_response = _make_submissions_response(
@@ -178,7 +178,7 @@ class TestGetRecentFilings:
             _mock_response(fragment_response),
         ]
 
-        from redline.edgar import get_recent_filings
+        from redline.ingestion.edgar import get_recent_filings
 
         results = get_recent_filings(
             cik="0000320193",
@@ -195,7 +195,7 @@ class TestGetRecentFilings:
         # Should have both filings
         assert len(results) == 2
 
-    @patch("redline.edgar._get")
+    @patch("redline.ingestion.edgar._get")
     def test_filters_by_max_years(self, mock_get):
         """get_recent_filings filters out filings older than max_years."""
         # One filing from 2025-12-28 (within 1 year of 2026-03-12),
@@ -210,7 +210,7 @@ class TestGetRecentFilings:
 
         mock_get.return_value = _mock_response(main_response)
 
-        from redline.edgar import get_recent_filings
+        from redline.ingestion.edgar import get_recent_filings
 
         results = get_recent_filings(
             cik="0000320193",
@@ -224,7 +224,7 @@ class TestGetRecentFilings:
         assert len(results) == 1
         assert results[0].period_of_report == "2025-12-28"
 
-    @patch("redline.edgar._get")
+    @patch("redline.ingestion.edgar._get")
     def test_returns_filing_records_sorted_oldest_first(self, mock_get):
         """get_recent_filings returns FilingRecord objects sorted oldest first."""
         main_response = _make_submissions_response(
@@ -245,7 +245,7 @@ class TestGetRecentFilings:
 
         mock_get.return_value = _mock_response(main_response)
 
-        from redline.edgar import get_recent_filings
+        from redline.ingestion.edgar import get_recent_filings
 
         results = get_recent_filings(
             cik="0000320193",
@@ -282,8 +282,8 @@ class TestGetRecentFilings:
 class TestGetNewFilings:
     """Tests for get_new_filings()."""
 
-    @patch("redline.edgar.get_recent_filings")
-    @patch("redline.edgar.get_cik")
+    @patch("redline.ingestion.edgar.get_recent_filings")
+    @patch("redline.ingestion.edgar.get_cik")
     def test_filters_out_existing_filings(self, mock_get_cik, mock_get_recent):
         """get_new_filings filters out filings that already exist in storage."""
         mock_get_cik.return_value = ("0000320193", "Apple Inc.", "AAPL")
@@ -313,10 +313,10 @@ class TestGetNewFilings:
 
         mock_get_recent.return_value = [existing_filing, new_filing]
 
-        with patch("redline.storage.filing_exists") as mock_exists:
+        with patch("redline.data.storage.filing_exists") as mock_exists:
             mock_exists.side_effect = lambda fid: fid == "000032019324000010"
 
-            from redline.edgar import get_new_filings
+            from redline.ingestion.edgar import get_new_filings
 
             results = get_new_filings("AAPL", ["10-K"])
 

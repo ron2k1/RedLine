@@ -14,7 +14,7 @@ import instructor
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from redline import config
+from redline.core import config
 
 logger = logging.getLogger(__name__)
 

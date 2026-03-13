@@ -4,26 +4,28 @@ Fetches filing HTML from EDGAR, locates Item sections via regex,
 strips HTML to plain text, returns ExtractionResult per section.
 """
 
+import html as html_mod
 import re
 import logging
 
 import requests
 
-from redline import config
-from redline.models import FilingRecord, ExtractionResult
+from redline.core import config
+from redline.core.models import FilingRecord, ExtractionResult
 
 logger = logging.getLogger(__name__)
 
 # Map section codes to the Item headers used in 10-K and 10-Q filings.
 SECTION_MAP_10K: dict[str, str] = {
     "1A": "Item 1A",   # Risk Factors
+    "3":  "Item 3",    # Legal Proceedings
     "7":  "Item 7",    # MD&A
     "9A": "Item 9A",   # Controls and Procedures
 }
 
 SECTION_MAP_10Q: dict[str, str] = {
     "1A": "Item 1A",   # Risk Factors
-    "2":  "Item 2",    # MD&A (Part I, Item 2 in 10-Q)
+    "7":  "Item 2",    # MD&A (conceptual "7" → Item 2 in 10-Q)
     "3":  "Item 3",    # Quantitative and Qualitative Disclosures
 }
 
@@ -43,18 +45,13 @@ _ITEM_HEADER_RE = re.compile(
 
 
 def _clean_html(text: str) -> str:
-    """Remove HTML tags, decode common entities, collapse whitespace."""
+    """Remove HTML tags, decode all entities, collapse whitespace."""
     # Strip HTML tags
     text = re.sub(r'<[^>]+>', ' ', text)
-    # Decode common HTML entities
-    for entity, char in (
-        ('&amp;', '&'), ('&lt;', '<'), ('&gt;', '>'),
-        ('&nbsp;', ' '), ('&#160;', ' '), ('&quot;', '"'),
-        ('&#39;', "'"), ('&apos;', "'"),
-    ):
-        text = text.replace(entity, char)
     # Remove any remaining angle brackets (partial tags at extraction boundaries)
     text = text.replace('<', ' ').replace('>', ' ')
+    # Decode all HTML entities (&#8220;, &amp;, &nbsp;, etc.)
+    text = html_mod.unescape(text)
     # Collapse runs of whitespace into a single space
     text = re.sub(r'\s+', ' ', text).strip()
     return text
@@ -126,23 +123,33 @@ def extract_section(filing: FilingRecord, section_code: str) -> ExtractionResult
                 error_msg=None,
             )
 
-        # Heuristic: skip the first occurrence when there are multiple, since
-        # the first is usually the Table of Contents entry.
-        start_match = target_hits[1] if len(target_hits) > 1 else target_hits[0]
-        start_pos = start_match.start()
+        # Heuristic: pick the occurrence that captures the most content.
+        # The first hit is usually the Table of Contents entry (tiny span).
+        # For each hit, measure the gap to the next *different* item header.
+        best_match = target_hits[0]
+        best_span = 0
+        best_end = min(target_hits[0].start() + 500_000, len(html))
 
-        # ----- find the *next* Item header after our start -------------------
-        subsequent = [
-            m for m in matches
-            if m.start() > start_match.end()
-            and m.group(1).upper() != target_item_num.upper()
-        ]
+        for hit in target_hits:
+            subsequent = [
+                m for m in matches
+                if m.start() > hit.end()
+                and m.group(1).upper() != target_item_num.upper()
+            ]
+            if subsequent:
+                span = subsequent[0].start() - hit.start()
+                end = subsequent[0].start()
+            else:
+                span = min(500_000, len(html) - hit.start())
+                end = min(hit.start() + 500_000, len(html))
 
-        if subsequent:
-            end_pos = subsequent[0].start()
-        else:
-            # No following header found — take up to 500 KB.
-            end_pos = min(start_pos + 500_000, len(html))
+            if span > best_span:
+                best_span = span
+                best_match = hit
+                best_end = end
+
+        start_pos = best_match.start()
+        end_pos = best_end
 
         section_html = html[start_pos:end_pos]
 
