@@ -6,3 +6,5 @@ ollama
 instructor
 pydantic
 pytest
+sentence-transformers>=2.2.0
+scikit-learn>=1.0

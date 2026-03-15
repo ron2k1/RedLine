@@ -72,7 +72,8 @@ def test_init_db_creates_tables(tmp_db):
     conn.close()
 
     expected = sorted([
-        "companies", "filings", "sections", "diffs", "extraction_attempts"
+        "companies", "filings", "sections", "diffs", "extraction_attempts",
+        "section_embeddings",
     ])
     assert table_names == expected
 

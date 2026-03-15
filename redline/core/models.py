@@ -37,6 +37,9 @@ class DiffResult:
     sentences_unchanged: int
     diff_preview: str           # max 3000 chars
     raw_chunks: list[dict] = field(default_factory=list)
+    diff_version: int = 1       # 1=legacy (SequenceMatcher), 2=semantic (embeddings)
+    semantic_similarity: float | None = None  # avg cosine sim of matched pairs (v2 only)
+    sentences_modified: int = 0  # matched but meaning changed (v2 only)
 
 
 @dataclass

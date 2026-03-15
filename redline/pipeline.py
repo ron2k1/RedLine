@@ -145,10 +145,13 @@ def process_filing(filing: FilingRecord, section_codes: list[str]) -> None:
             "final_score": final,
             "flags_json": signal_result.flags_json,
             "llm_output": json.dumps(llm_output) if llm_output else None,
+            "diff_version": diff_result.diff_version,
+            "semantic_similarity": diff_result.semantic_similarity,
+            "sentences_modified": diff_result.sentences_modified,
         }
         storage.insert_diff(diff_dict)
-        logger.info("  Section %s: diff stored (prelim=%d, final=%d)",
-                    result.section_code, prelim, final)
+        logger.info("  Section %s: v%d diff stored (prelim=%d, final=%d)",
+                    result.section_code, diff_result.diff_version, prelim, final)
 
     storage.mark_filing_processed(filing.filing_id)
     logger.info("Marked %s as processed", filing.filing_id)

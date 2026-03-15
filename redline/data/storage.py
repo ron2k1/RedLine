@@ -95,8 +95,66 @@ def init_db():
         );
     """)
 
+    _run_migrations(conn)
+
     conn.commit()
     conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Schema migrations (idempotent)
+# ---------------------------------------------------------------------------
+
+def _run_migrations(conn):
+    """Apply all schema migrations.  Safe to call on every startup."""
+    _migrate_semantic_diff_columns(conn)
+    _migrate_section_embeddings_table(conn)
+    _migrate_performance_indices(conn)
+
+
+def _migrate_semantic_diff_columns(conn):
+    """Add diff_version, semantic_similarity, sentences_modified to diffs."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(diffs)").fetchall()}
+    if "diff_version" not in existing:
+        conn.execute(
+            "ALTER TABLE diffs ADD COLUMN diff_version INTEGER NOT NULL DEFAULT 1"
+        )
+    if "semantic_similarity" not in existing:
+        conn.execute("ALTER TABLE diffs ADD COLUMN semantic_similarity REAL")
+    if "sentences_modified" not in existing:
+        conn.execute(
+            "ALTER TABLE diffs ADD COLUMN sentences_modified INTEGER NOT NULL DEFAULT 0"
+        )
+
+
+def _migrate_section_embeddings_table(conn):
+    """Create section_embeddings table (stores vectors for Upgrade 3 anomaly detection)."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS section_embeddings (
+            id          TEXT PRIMARY KEY,
+            filing_id   TEXT NOT NULL,
+            section     TEXT NOT NULL,
+            embedding   BLOB NOT NULL,
+            model_name  TEXT NOT NULL,
+            created_at  TEXT NOT NULL,
+            FOREIGN KEY (filing_id) REFERENCES filings(id),
+            UNIQUE(filing_id, section, model_name)
+        )
+    """)
+
+
+def _migrate_performance_indices(conn):
+    """Add indices that prevent full table scans on common queries."""
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_diffs_ticker ON diffs(ticker)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_diffs_created_at ON diffs(created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_diffs_final_score ON diffs(final_score DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_filings_cik_type ON filings(cik, form_type)"
+    )
 
 
 def _now() -> str:
@@ -290,8 +348,9 @@ def insert_diff(diff_dict: dict):
             "period_of_report, pct_changed, word_count_old, word_count_new, "
             "word_count_delta, sentences_added, sentences_removed, "
             "sentences_unchanged, diff_preview, preliminary_score, "
-            "final_score, flags_json, llm_output, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "final_score, flags_json, llm_output, created_at, "
+            "diff_version, semantic_similarity, sentences_modified) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 diff_id,
                 diff_dict["filing_id"],
@@ -313,6 +372,9 @@ def insert_diff(diff_dict: dict):
                 diff_dict.get("flags_json"),
                 diff_dict.get("llm_output"),
                 _now(),
+                diff_dict.get("diff_version", 1),
+                diff_dict.get("semantic_similarity"),
+                diff_dict.get("sentences_modified", 0),
             ),
         )
         conn.commit()
@@ -341,6 +403,45 @@ def mark_filing_processed(filing_id: str):
             "UPDATE filings SET processed = 1 WHERE id = ?", (filing_id,)
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def insert_section_embedding(
+    filing_id: str, section: str, embedding_bytes: bytes, model_name: str
+):
+    """Store a section embedding (mean of sentence embeddings) for anomaly detection."""
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO section_embeddings "
+            "(id, filing_id, section, embedding, model_name, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (str(uuid.uuid4()), filing_id, section, embedding_bytes, model_name, _now()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_section_embeddings(
+    cik: str, form_type: str, section: str, model_name: str, limit: int = 5
+) -> list[dict]:
+    """Get recent section embeddings for anomaly detection (Upgrade 3).
+
+    Returns list of dicts ordered by filing period DESC.
+    """
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT se.* FROM section_embeddings se "
+            "JOIN filings f ON se.filing_id = f.id "
+            "WHERE f.cik = ? AND f.form_type = ? "
+            "AND se.section = ? AND se.model_name = ? "
+            "ORDER BY f.period_of_report DESC LIMIT ?",
+            (cik, form_type, section, model_name, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
     finally:
         conn.close()
 
