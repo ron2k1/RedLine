@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Trends{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Score Trends</h1>
+    <p class="page-subtitle">Score trajectories and filing volatility across 4+ periods</p>
+</div>
+
+<div class="filter-bar">
+    <form method="get" action="{{ url_for('trends_overview') }}" class="filter-form">
+        <label for="ticker-select">Filter by ticker:</label>
+        <select name="ticker" id="ticker-select" onchange="this.form.submit()">
+            <option value="">All tickers</option>
+            {% for t in tickers %}
+                <option value="{{ t }}" {% if t == current_ticker %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit" class="btn btn-sm">Apply</button></noscript>
+    </form>
+</div>
+
+{% if trends %}
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Form</th>
+                <th>Section</th>
+                <th>Periods</th>
+                <th>Direction</th>
+                <th>Score Trend</th>
+                <th>Latest</th>
+                <th>Avg</th>
+                <th>Slope</th>
+                <th>Volatility</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tr in trends %}
+            <tr class="clickable-row" onclick="window.location='{{ url_for('trends_detail', ticker=tr.ticker) }}'">
+                <td><a href="{{ url_for('trends_detail', ticker=tr.ticker) }}" class="ticker-link" onclick="event.stopPropagation()">{{ tr.ticker }}</a></td>
+                <td>{{ tr.form_type }}</td>
+                <td><span class="section-tag">{{ tr.section }}</span></td>
+                <td>{{ tr.periods }}</td>
+                <td>
+                    <span class="direction-badge direction-{{ tr.direction }}">{{ tr.direction }}</span>
+                </td>
+                <td class="sparkline-cell">
+                    {% for s in tr.score_trend_list %}
+                        <span class="spark-dot {{ s|score_class }}" title="{{ s }}">{{ s }}</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <span class="score-badge {{ tr.score_latest|score_class }}">{{ tr.score_latest }}</span>
+                </td>
+                <td>{{ "%.1f"|format(tr.score_mean) }}</td>
+                <td class="{% if tr.score_slope > 0.3 %}trend-up{% elif tr.score_slope < -0.3 %}trend-down{% endif %}">
+                    {% if tr.score_slope > 0 %}+{% endif %}{{ "%.2f"|format(tr.score_slope) }}
+                </td>
+                <td>
+                    {% if tr.volatile %}
+                        <span class="volatile-badge">HIGH</span>
+                    {% else %}
+                        <span class="stable-badge">low</span>
+                    {% endif %}
+                    <span class="vol-value">({{ "%.1f"|format(tr.pct_changed_stddev * 100) }}%)</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">---</div>
+    <h2>No trend data yet</h2>
+    <p>Trends require 4+ filing periods per section. Run the pipeline to build history.</p>
+    <code class="empty-cmd">python -m redline.pipeline</code>
+</div>
+{% endif %}
+{% endblock %}

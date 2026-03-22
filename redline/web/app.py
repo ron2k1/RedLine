@@ -13,6 +13,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from markupsafe import Markup
 from redline.data import storage, watchlist
+from redline.analysis import trends as trends_module
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24).hex())
@@ -93,6 +94,40 @@ def diff_detail(diff_id):
         return "Diff not found", 404
     extractions = storage.get_extraction_attempts(diff["filing_id"])
     return render_template("diff_detail.html", diff=diff, extractions=extractions)
+
+
+@app.route("/trends")
+def trends_overview():
+    """Trends overview: all tickers with trend data."""
+    ticker_filter = request.args.get("ticker", "").strip()
+    if ticker_filter:
+        trend_rows = storage.get_trends_for_ticker(ticker_filter)
+    else:
+        trend_rows = []
+        for t in storage.get_all_trend_tickers():
+            trend_rows.extend(storage.get_trends_for_ticker(t))
+    # Parse data_json and score_trend for template use
+    for tr in trend_rows:
+        tr["score_trend_list"] = json.loads(tr["score_trend"])
+        tr["data"] = json.loads(tr["data_json"])
+    tickers_with_trends = storage.get_all_trend_tickers()
+    return render_template("trends.html", trends=trend_rows,
+                           tickers=tickers_with_trends,
+                           current_ticker=ticker_filter)
+
+
+@app.route("/trends/<ticker>")
+def trends_detail(ticker):
+    """Trend detail for a specific ticker."""
+    trend_rows = storage.get_trends_for_ticker(ticker)
+    if not trend_rows:
+        # Try computing on the fly
+        trends_module.update_all_trends_for_ticker(ticker)
+        trend_rows = storage.get_trends_for_ticker(ticker)
+    for tr in trend_rows:
+        tr["score_trend_list"] = json.loads(tr["score_trend"])
+        tr["data"] = json.loads(tr["data_json"])
+    return render_template("trends_detail.html", ticker=ticker, trends=trend_rows)
 
 
 @app.route("/watchlist", methods=["GET", "POST"])

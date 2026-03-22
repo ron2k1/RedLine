@@ -15,6 +15,7 @@
             <a href="{{ url_for('dashboard') }}" class="nav-brand">REDLINE</a>
             <div class="nav-links">
                 <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a>
+                <a href="{{ url_for('trends_overview') }}" class="nav-link {% if request.endpoint in ('trends_overview', 'trends_detail') %}active{% endif %}">Trends</a>
                 <a href="{{ url_for('watchlist_page') }}" class="nav-link {% if request.endpoint == 'watchlist_page' %}active{% endif %}">Watchlist</a>
             </div>
         </div>

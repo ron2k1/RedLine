@@ -110,6 +110,7 @@ def _run_migrations(conn):
     _migrate_semantic_diff_columns(conn)
     _migrate_section_embeddings_table(conn)
     _migrate_performance_indices(conn)
+    _migrate_trends_table(conn)
 
 
 def _migrate_semantic_diff_columns(conn):
@@ -155,6 +156,32 @@ def _migrate_performance_indices(conn):
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_filings_cik_type ON filings(cik, form_type)"
     )
+
+
+def _migrate_trends_table(conn):
+    """Create trends table for score trajectory and volatility tracking."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS trends (
+            id              TEXT PRIMARY KEY,
+            ticker          TEXT NOT NULL,
+            form_type       TEXT NOT NULL,
+            section         TEXT NOT NULL,
+            periods         INTEGER NOT NULL,
+            score_trend     TEXT NOT NULL,
+            score_slope     REAL NOT NULL,
+            score_latest    INTEGER NOT NULL,
+            score_mean      REAL NOT NULL,
+            pct_changed_mean    REAL NOT NULL,
+            pct_changed_stddev  REAL NOT NULL,
+            pct_changed_latest  REAL NOT NULL,
+            direction       TEXT NOT NULL,
+            volatile        INTEGER NOT NULL DEFAULT 0,
+            data_json       TEXT NOT NULL,
+            updated_at      TEXT NOT NULL,
+            UNIQUE(ticker, form_type, section)
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_trends_ticker ON trends(ticker)")
 
 
 def _now() -> str:
@@ -479,5 +506,82 @@ def get_diff_by_id(diff_id: str) -> dict | None:
             "SELECT * FROM diffs WHERE id = ?", (diff_id,)
         ).fetchone()
         return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_score_history(ticker: str, form_type: str, section: str,
+                      limit: int = 20) -> list[dict]:
+    """Get score and pct_changed history for a ticker/form_type/section, oldest first."""
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT period_of_report, preliminary_score, final_score, pct_changed "
+            "FROM diffs "
+            "WHERE ticker = ? AND form_type = ? AND section = ? "
+            "ORDER BY period_of_report ASC LIMIT ?",
+            (ticker, form_type, section, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def upsert_trend(trend_dict: dict):
+    """Insert or replace a trend record. UNIQUE(ticker, form_type, section)."""
+    trend_id = trend_dict.get("id", str(uuid.uuid4()))
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO trends "
+            "(id, ticker, form_type, section, periods, score_trend, score_slope, "
+            "score_latest, score_mean, pct_changed_mean, pct_changed_stddev, "
+            "pct_changed_latest, direction, volatile, data_json, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                trend_id,
+                trend_dict["ticker"],
+                trend_dict["form_type"],
+                trend_dict["section"],
+                trend_dict["periods"],
+                trend_dict["score_trend"],
+                trend_dict["score_slope"],
+                trend_dict["score_latest"],
+                trend_dict["score_mean"],
+                trend_dict["pct_changed_mean"],
+                trend_dict["pct_changed_stddev"],
+                trend_dict["pct_changed_latest"],
+                trend_dict["direction"],
+                trend_dict["volatile"],
+                trend_dict["data_json"],
+                _now(),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_trends_for_ticker(ticker: str) -> list[dict]:
+    """Get all trend records for a ticker."""
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM trends WHERE ticker = ? ORDER BY form_type, section",
+            (ticker,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_all_trend_tickers() -> list[str]:
+    """Get distinct tickers that have trend data."""
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT ticker FROM trends ORDER BY ticker"
+        ).fetchall()
+        return [r["ticker"] for r in rows]
     finally:
         conn.close()
