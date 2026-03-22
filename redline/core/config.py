@@ -21,5 +21,10 @@ SEMANTIC_DIFF_ENABLED: bool = os.getenv("SEMANTIC_DIFF_ENABLED", "true").lower()
 SEMANTIC_UNCHANGED_THRESHOLD: float = float(os.getenv("SEMANTIC_UNCHANGED_THRESHOLD", "0.85"))
 SEMANTIC_CHANGED_THRESHOLD: float = float(os.getenv("SEMANTIC_CHANGED_THRESHOLD", "0.55"))
 EMBEDDING_BATCH_SIZE: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "64"))
-# Store section embeddings for future anomaly detection (Upgrade 3). Off by default.
-STORE_EMBEDDINGS: bool = os.getenv("STORE_EMBEDDINGS", "false").lower() == "true"
+# Store section embeddings for anomaly detection.
+STORE_EMBEDDINGS: bool = os.getenv("STORE_EMBEDDINGS", "true").lower() == "true"
+
+# --- Anomaly detection settings ---
+ANOMALY_DETECTION_ENABLED: bool = os.getenv("ANOMALY_DETECTION_ENABLED", "true").lower() == "true"
+ANOMALY_MIN_HISTORY: int = int(os.getenv("ANOMALY_MIN_HISTORY", "3"))
+ANOMALY_Z_THRESHOLD: float = float(os.getenv("ANOMALY_Z_THRESHOLD", "2.0"))

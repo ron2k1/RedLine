@@ -12,7 +12,7 @@ from redline.core.models import FilingRecord
 from redline.data import storage, watchlist
 from redline.ingestion import edgar, extractor
 from redline.ingestion.extractor import SECTION_MAP_10K, SECTION_MAP_10Q
-from redline.analysis import differ, signals, scorer, analyzer
+from redline.analysis import differ, signals, scorer, analyzer, anomaly
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +102,23 @@ def process_filing(filing: FilingRecord, section_codes: list[str]) -> None:
 
         # Detect signals
         signal_result = signals.detect_signals(result.text)
+
+        # Anomaly detection: compute & store embedding, check for drift
+        anomaly_result = None
+        section_emb = anomaly.compute_section_embedding(result.text)
+        if section_emb is not None:
+            anomaly.store_section_embedding(
+                filing.filing_id, result.section_code, section_emb,
+            )
+            anomaly_result = anomaly.detect_anomaly(
+                cik=filing.cik,
+                form_type=filing.form_type,
+                section=result.section_code,
+                current_embedding=section_emb,
+            )
+            if anomaly_result.is_anomaly:
+                logger.info("  Section %s: anomaly detected (z=%.2f)",
+                            result.section_code, anomaly_result.z_score)
 
         # Score
         prelim = scorer.preliminary_score(diff_result, signal_result)
