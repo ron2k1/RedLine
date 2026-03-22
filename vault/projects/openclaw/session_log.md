@@ -23,6 +23,20 @@ Narrative log of agent sessions. Newest first.
 
 ---
 
+## 2026-03-22 — Add a comment to redline/ingestion/edgar.py above fetch_submissions explaining t
+
+- **Time**: 2026-03-22 07:22 UTC
+- **Status**: success
+- **Tier**: ALLOWED | **Mode**: safe
+- **Branch**: `agent/add-a-comment-to-redline-ingestion-edgar-20260322-072152`
+- **Files changed**: `LAUDE.md`, `redline/ingestion/edgar.py`
+- **Cost**: $0.1111
+
+**Output preview**:
+> Done. Added a comment above `get_recent_filings` (the submissions-fetching function) explaining SEC's 10 req/sec rate limit, the 429 consequence, and how the codebase handles it via `_rate_limit()`.
+
+---
+
 ## 2026-03-22 — Add a type hint to the return value of get_previous_filing in redline/data/stora
 
 - **Time**: 2026-03-22 07:22 UTC
