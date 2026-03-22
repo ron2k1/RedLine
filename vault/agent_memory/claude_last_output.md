@@ -5,10 +5,10 @@ Parsed results of the most recent Claude Code invocation. Updated by bridge.py.
 ---
 
 ## Last Invocation
-- **Task**: Add trend analysis to track score trajectories and pct_changed volatility across 4+ filing periods per company. Add a trends table to storage.py and a trends.py module in redline/analysis/. Show trend data in the Flask web UI.
+- **Task**: Add a comment to redline/analysis/scorer.py above preliminary_score explaining the scoring formula
 - **Status**: success
 - **Tier**: ALLOWED
 - **Mode**: safe
-- **Files changed**: udit_log.jsonl, redline/analysis/semantic.py, tasks/state.json, vault/agent_memory/claude_last_output.md, vault/projects/openclaw/session_log.md, tasks/state_history/
-- **Cost**: $0.2118
-- **Timestamp**: 2026-03-22 05:50 UTC
+- **Files changed**: LAUDE.md, redline/analysis/scorer.py, tasks/state_history/state_20260322_062208.json, tasks/state_history/state_20260322_062521.json, tasks/state_history/state_20260322_062523.json, tasks/state_history/state_20260322_062825.json, tasks/state_history/state_20260322_062827.json
+- **Cost**: $0.1079
+- **Timestamp**: 2026-03-22 06:51 UTC
