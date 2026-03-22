@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ticker }} Trends{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> /
+        <a href="{{ url_for('trends_overview') }}">Trends</a> /
+        <span>{{ ticker }}</span>
+    </div>
+    <h1>{{ ticker }} — Score Trends</h1>
+    <p class="page-subtitle">Score trajectory and volatility across filing periods</p>
+</div>
+
+{% if trends %}
+{% for tr in trends %}
+<div class="trend-card">
+    <div class="trend-header">
+        <h2>{{ tr.form_type }} &mdash; Section {{ tr.section }}</h2>
+        <div class="trend-badges">
+            <span class="direction-badge direction-{{ tr.direction }}">{{ tr.direction }}</span>
+            {% if tr.volatile %}
+                <span class="volatile-badge">HIGH VOLATILITY</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="overview-cards">
+        <div class="overview-card">
+            <div class="overview-label">Periods</div>
+            <div class="overview-value">{{ tr.periods }}</div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">Latest Score</div>
+            <div class="overview-value"><span class="score-badge score-badge-lg {{ tr.score_latest|score_class }}">{{ tr.score_latest }}</span></div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">Avg Score</div>
+            <div class="overview-value">{{ "%.1f"|format(tr.score_mean) }}</div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">Slope</div>
+            <div class="overview-value {% if tr.score_slope > 0.3 %}trend-up{% elif tr.score_slope < -0.3 %}trend-down{% endif %}">
+                {% if tr.score_slope > 0 %}+{% endif %}{{ "%.3f"|format(tr.score_slope) }}
+            </div>
+            <div class="overview-note">per period</div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">Avg % Changed</div>
+            <div class="overview-value">{{ "%.1f"|format(tr.pct_changed_mean * 100) }}%</div>
+        </div>
+        <div class="overview-card">
+            <div class="overview-label">Volatility (StdDev)</div>
+            <div class="overview-value">{{ "%.1f"|format(tr.pct_changed_stddev * 100) }}%</div>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <h2>Score History</h2>
+        <div class="history-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>Score</th>
+                        <th>% Changed</th>
+                        <th>Visual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for point in tr.data.periods %}
+                    <tr>
+                        <td>{{ point.period }}</td>
+                        <td><span class="score-badge {{ point.score|score_class }}">{{ point.score }}</span></td>
+                        <td>{{ "%.1f"|format(point.pct_changed * 100) }}%</td>
+                        <td>
+                            <div class="bar-container">
+                                <div class="bar-fill {{ point.score|score_class }}" style="width: {{ point.score * 10 }}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">---</div>
+    <h2>No trend data for {{ ticker }}</h2>
+    <p>Trends require 4+ filing periods per section. <a href="{{ url_for('company', ticker=ticker) }}">View filings</a></p>
+</div>
+{% endif %}
+{% endblock %}

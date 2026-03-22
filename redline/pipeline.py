@@ -12,7 +12,7 @@ from redline.core.models import FilingRecord
 from redline.data import storage, watchlist
 from redline.ingestion import edgar, extractor
 from redline.ingestion.extractor import SECTION_MAP_10K, SECTION_MAP_10Q
-from redline.analysis import differ, signals, scorer, analyzer
+from redline.analysis import differ, signals, scorer, analyzer, trends
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +155,9 @@ def process_filing(filing: FilingRecord, section_codes: list[str]) -> None:
 
     storage.mark_filing_processed(filing.filing_id)
     logger.info("Marked %s as processed", filing.filing_id)
+
+    # Update trends for all sections that were diffed
+    trends.update_all_trends_for_ticker(filing.ticker)
 
 
 def run() -> None:

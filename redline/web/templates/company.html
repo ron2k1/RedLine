@@ -8,7 +8,7 @@
         <a href="{{ url_for('dashboard') }}">Dashboard</a> / <span>{{ ticker }}</span>
     </div>
     <h1>{{ ticker }}</h1>
-    <p class="page-subtitle">All filings and extraction status</p>
+    <p class="page-subtitle">All filings and extraction status &mdash; <a href="{{ url_for('trends_detail', ticker=ticker) }}">View Trends</a></p>
 </div>
 
 {% if filings %}
