@@ -28,3 +28,12 @@ STORE_EMBEDDINGS: bool = os.getenv("STORE_EMBEDDINGS", "true").lower() == "true"
 ANOMALY_DETECTION_ENABLED: bool = os.getenv("ANOMALY_DETECTION_ENABLED", "true").lower() == "true"
 ANOMALY_MIN_HISTORY: int = int(os.getenv("ANOMALY_MIN_HISTORY", "3"))
 ANOMALY_Z_THRESHOLD: float = float(os.getenv("ANOMALY_Z_THRESHOLD", "2.0"))
+
+# --- Scheduler settings ---
+POLL_INTERVAL_SECONDS: int = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
+MARKET_OPEN_HOUR: int = int(os.getenv("MARKET_OPEN_HOUR", "9"))
+MARKET_OPEN_MINUTE: int = int(os.getenv("MARKET_OPEN_MINUTE", "30"))
+MARKET_CLOSE_HOUR: int = int(os.getenv("MARKET_CLOSE_HOUR", "16"))
+MARKET_CLOSE_MINUTE: int = int(os.getenv("MARKET_CLOSE_MINUTE", "0"))
+ALERT_SCORE_THRESHOLD: int = int(os.getenv("ALERT_SCORE_THRESHOLD", "7"))
+ALERTS_PATH: str = os.getenv("ALERTS_PATH", "./alerts/alerts.jsonl")
