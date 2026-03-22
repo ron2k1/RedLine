@@ -73,7 +73,7 @@ def test_init_db_creates_tables(tmp_db):
 
     expected = sorted([
         "companies", "filings", "sections", "diffs", "extraction_attempts",
-        "section_embeddings",
+        "section_embeddings", "trends",
     ])
     assert table_names == expected
 
