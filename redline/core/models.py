@@ -48,3 +48,21 @@ class SignalResult:
     signals: list[dict] = field(default_factory=list)
     max_severity: int = 0
     flags_json: str = "[]"
+
+
+@dataclass
+class TrendResult:
+    """Output of trends.compute_trend(). Tracks score trajectory and volatility."""
+    ticker: str
+    form_type: str
+    section: str
+    periods: int                    # number of filing periods analyzed
+    score_trend: list[int]          # scores in chronological order
+    score_slope: float              # linear regression slope (+ = worsening)
+    score_latest: int               # most recent score
+    score_mean: float               # mean score across periods
+    pct_changed_mean: float         # mean pct_changed
+    pct_changed_stddev: float       # stddev of pct_changed (volatility)
+    pct_changed_latest: float       # most recent pct_changed
+    direction: str                  # 'improving' | 'stable' | 'worsening'
+    volatile: bool                  # True if stddev > 0.10

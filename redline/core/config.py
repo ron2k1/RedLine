@@ -23,3 +23,12 @@ SEMANTIC_CHANGED_THRESHOLD: float = float(os.getenv("SEMANTIC_CHANGED_THRESHOLD"
 EMBEDDING_BATCH_SIZE: int = int(os.getenv("EMBEDDING_BATCH_SIZE", "64"))
 # Store section embeddings for future anomaly detection (Upgrade 3). Off by default.
 STORE_EMBEDDINGS: bool = os.getenv("STORE_EMBEDDINGS", "false").lower() == "true"
+
+# --- Scheduler settings ---
+POLL_INTERVAL_SECONDS: int = int(os.getenv("POLL_INTERVAL_SECONDS", "300"))
+MARKET_OPEN_HOUR: int = int(os.getenv("MARKET_OPEN_HOUR", "9"))
+MARKET_OPEN_MINUTE: int = int(os.getenv("MARKET_OPEN_MINUTE", "30"))
+MARKET_CLOSE_HOUR: int = int(os.getenv("MARKET_CLOSE_HOUR", "16"))
+MARKET_CLOSE_MINUTE: int = int(os.getenv("MARKET_CLOSE_MINUTE", "0"))
+ALERT_SCORE_THRESHOLD: int = int(os.getenv("ALERT_SCORE_THRESHOLD", "7"))
+ALERTS_PATH: str = os.getenv("ALERTS_PATH", "./alerts/alerts.jsonl")
