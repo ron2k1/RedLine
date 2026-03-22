@@ -1,0 +1,72 @@
+{
+  "last_task": "Add a get_alert_summary() function to redline/scheduler/alerts.py that reads alerts/alerts.jsonl and returns a dict with total_alerts (int), high_score_count (int counting alerts with score >= 8), and latest_alert (dict or None). Include a docstring.",
+  "status": "success",
+  "tier": "ALLOWED",
+  "decision": "proceed",
+  "mode": "autonomous",
+  "files_changed": [
+    "LAUDE.md",
+    "redline/scheduler/alerts.py",
+    "audit_log.jsonl"
+  ],
+  "exit_code": 0,
+  "error": null,
+  "next_suggested": "Review changes: LAUDE.md, redline/scheduler/alerts.py, audit_log.jsonl",
+  "self_heal_attempts": 0,
+  "quality_results": {
+    "passed": false,
+    "gates": [
+      {
+        "name": "ruff",
+        "hard": false,
+        "passed": false,
+        "stdout": "",
+        "stderr": "C:\\Users\\ronil\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe: No module named ruff\n",
+        "exit_code": 1
+      },
+      {
+        "name": "pip_audit",
+        "hard": false,
+        "passed": false,
+        "stdout": "",
+        "stderr": "C:\\Users\\ronil\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe: No module named pip_audit\n",
+        "exit_code": 1
+      },
+      {
+        "name": "unsafe_scan",
+        "hard": false,
+        "passed": true,
+        "stdout": "Clean",
+        "stderr": "",
+        "exit_code": 0,
+        "review_items": []
+      },
+      {
+        "name": "pytest",
+        "hard": true,
+        "passed": false,
+        "stdout": "................................................F....................... [ 41%]\n................................FF...................................... [ 83%]\n..F.........................                                             [100%]\n================================== FAILURES ===================================\n______________________ test_process_filing_creates_diff _______________________\nredline\\tests\\test_pipeline.py:138: in test_process_filing_creates_diff\n    process_filing(new_filing, [\"1A\"])\nredline\\pipeline.py:96: in process_filing\n    diff_result = differ.diff_sections(prev_section[\"raw_text\"], result.text)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nredline\\analysis\\differ.py:86: in diff_sections\n    if semantic.is_available():\n       ^^^^^^^^^^^^^^^^^^^^^^^\nredline\\analysis\\semantic.py:33: in is_available\n    import sentence_transformers  # noqa: F401\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\..\\..\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\sentence_transformers\\__init__.py:10: in <module>\n    from sentence_transformers.backend import (\n..\\..\\..\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\sentence_transformers\\backend\\__init__.py:3: in <module>\n    from .load import load_onnx_model, load_openvino_model\n..\\..\\..\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\sentence_transformers\\backend\\load.py:7: in <module>\n    from transformers.configuration_utils import PretrainedConfig\n..\\..\\..\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\transformers\\__init__.py:30: in <module>\n    from . import dependency_versions_check\n..\\..\\..\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-p",
+        "stderr": "Windows fatal exception: access violation\n\nCurrent thread 0x0000644c (most recent call first):\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torch\\__init__.py\", line 256 in _load_dll_libraries\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torch\\__init__.py\", line 280 in <module>\n  File \"<frozen importlib._bootstrap>\", line 488 in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap_external>\", line 1023 in exec_module\n  File \"<frozen importlib._bootstrap>\", line 935 in _load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1331 in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1360 in _find_and_load\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\transformers\\utils\\generic.py\", line 41 in <module>\n  File \"<frozen importlib._bootstrap>\", line 488 in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap_external>\", line 1023 in exec_module\n  File \"<frozen importlib._bootstrap>\", line 935 in _load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1331 in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1360 in _find_and_load\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\transformers\\utils\\auto_docstring.py\", line 32 in <module>\n  File \"<frozen importlib._bootstrap>\", line 488 in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap_external>\", line 1023 in exec_module\n  File \"<frozen importlib._bootstrap>\", line 935 in _load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1331 in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1360 in _find_and_load\n  File \"C:\\Users\\roni",
+        "exit_code": 1
+      }
+    ],
+    "hard_failures": [
+      "pytest"
+    ],
+    "soft_failures": [
+      "ruff",
+      "pip_audit"
+    ],
+    "review_items": [],
+    "first_hard_error": "Windows fatal exception: access violation\n\nCurrent thread 0x0000644c (most recent call first):\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torch\\__init__.py\", line 256 in _load_dll_libraries\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\torch\\__init__.py\", line 280 in <module>\n  File \"<frozen importlib._bootstrap>\", line 488 in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap_external>\", line 1023 in exec_module\n  File \"<frozen importlib._bootstrap>\", line 935 in _load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1331 in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1360 in _find_and_load\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\transformers\\utils\\generic.py\", line 41 in <module>\n  File \"<frozen importlib._bootstrap>\", line 488 in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap_external>\", line 1023 in exec_module\n  File \"<frozen importlib._bootstrap>\", line 935 in _load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1331 in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1360 in _find_and_load\n  File \"C:\\Users\\ronil\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python313\\site-packages\\transformers\\utils\\auto_docstring.py\", line 32 in <module>\n  File \"<frozen importlib._bootstrap>\", line 488 in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap_external>\", line 1023 in exec_module\n  File \"<frozen importlib._bootstrap>\", line 935 in _load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1331 in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 1360 in _find_and_load\n  File \"C:\\Users\\roni"
+  },
+  "timestamp": "2026-03-22T05:36:52.830855+00:00",
+  "claude_output_preview": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"duration_ms\":12733,\"duration_api_ms\":12710,\"num_turns\":3,\"result\":\"The `get_alert_summary()` function has been added. It reads `alerts/alerts.jsonl` (via `config.ALERTS_PATH`), streams through all lines, and returns a dict with:\\n\\n- **`total_alerts`** \u00e2\u20ac\u201d count of all alert records\\n- **`high_score_count`** \u00e2\u20ac\u201d count where `final_score >= 8`\\n- **`latest_alert`** \u00e2\u20ac\u201d the last record in the file, or `None` if the file is missing/empty\",\"stop",
+  "history": [
+    {
+      "task": "Add a get_alert_summary() function to redline/scheduler/alerts.py that reads alerts/alerts.jsonl and returns a dict with total_alerts (int), high_score_count (int counting alerts with score >= 8), and latest_alert (dict or None). Include a docstring.",
+      "status": "success",
+      "timestamp": "2026-03-22T05:36:52.830855+00:00"
+    }
+  ]
+}

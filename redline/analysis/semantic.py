@@ -32,7 +32,7 @@ def is_available() -> bool:
         import numpy  # noqa: F401
         import sentence_transformers  # noqa: F401
         _available = True
-    except ImportError as exc:
+    except (ImportError, OSError, Exception) as exc:
         logger.info("Semantic diff unavailable (%s); will use SequenceMatcher", exc)
         _available = False
     return _available
