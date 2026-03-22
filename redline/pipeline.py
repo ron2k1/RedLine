@@ -195,6 +195,8 @@ def run() -> None:
     storage.init_db()
 
     watchlist_data = watchlist.load()
+    tickers = watchlist_data.get("tickers", [])
+    logger.info("Watchlist size: %d tickers", len(tickers))
     all_section_codes = watchlist_data.get("sections", ["1A", "7", "3", "9A"])
     form_types = watchlist_data.get("form_types", ["10-K", "10-Q"])
 
@@ -209,7 +211,6 @@ def run() -> None:
             process_filing(filing, codes)
 
     # 2. Normal polling / backfill per ticker
-    tickers = watchlist_data.get("tickers", [])
     total_new = 0
 
     for ticker in tickers:
