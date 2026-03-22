@@ -44,3 +44,43 @@ def log_alert(diff_dict: dict) -> None:
         alert["ticker"], alert["form_type"], alert["section"],
         alert["final_score"], alert["filing_id"],
     )
+
+
+def get_alert_summary() -> dict:
+    """Read alerts/alerts.jsonl and return a summary dictionary.
+
+    Returns:
+        A dict with:
+        - total_alerts (int): Total number of alert records.
+        - high_score_count (int): Number of alerts with final_score >= 8.
+        - latest_alert (dict or None): The last alert record, or None if empty.
+    """
+    alerts_path = config.ALERTS_PATH
+
+    if not os.path.exists(alerts_path):
+        return {
+            "total_alerts": 0,
+            "high_score_count": 0,
+            "latest_alert": None,
+        }
+
+    total_alerts = 0
+    high_score_count = 0
+    latest_alert = None
+
+    with open(alerts_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            alert = json.loads(line)
+            total_alerts += 1
+            if alert.get("final_score", 0) >= 8:
+                high_score_count += 1
+            latest_alert = alert
+
+    return {
+        "total_alerts": total_alerts,
+        "high_score_count": high_score_count,
+        "latest_alert": latest_alert,
+    }
