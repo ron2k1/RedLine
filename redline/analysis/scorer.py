@@ -10,6 +10,11 @@ from __future__ import annotations
 from redline.core.models import DiffResult, SignalResult
 
 
+# Scoring formula:
+#   1. Base score from pct_changed: <5%→1, <15%→2, <30%→3, <50%→5, >=50%→6
+#   2. Add signal boost: max_severity // 2 when any signals triggered
+#   3. Override: if any signal severity >= 9, floor the score at 7
+#   4. Clamp final result to [1, 10]
 def preliminary_score(diff: DiffResult, signals: SignalResult) -> int:
     """Compute preliminary score 1-10 based on diff metrics and signal severity.
 

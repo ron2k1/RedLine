@@ -57,6 +57,7 @@ def process_filing(filing: FilingRecord, section_codes: list[str]) -> None:
 
     Used by all three paths: backfill, daily polling, and crash recovery.
     """
+    logger.info("Starting process_filing for filing_id=%s", filing.filing_id)
     logger.info("Processing %s %s %s (period %s)",
                 filing.ticker, filing.form_type, filing.filing_id,
                 filing.period_of_report)
