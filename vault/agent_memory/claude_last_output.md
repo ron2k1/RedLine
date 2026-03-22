@@ -5,10 +5,10 @@ Parsed results of the most recent Claude Code invocation. Updated by bridge.py.
 ---
 
 ## Last Invocation
-- **Task**: Add a get_alert_summary() function to redline/scheduler/alerts.py that reads alerts/alerts.jsonl and returns a dict with total_alerts (int), high_score_count (int counting alerts with score >= 8), and latest_alert (dict or None). Include a docstring.
+- **Task**: Build an anomaly detection module at redline/analysis/anomaly.py. Compare current section embeddings against historical mean for each company using cosine distance. Flag sections exceeding 2 standard deviations. Call it from analyzer.py after signal detection. Use existing section_embeddings table.
 - **Status**: success
 - **Tier**: ALLOWED
-- **Mode**: autonomous
-- **Files changed**: LAUDE.md, redline/scheduler/alerts.py, audit_log.jsonl
-- **Cost**: $0.1013
-- **Timestamp**: 2026-03-22 05:36 UTC
+- **Mode**: safe
+- **Files changed**: LAUDE.md, audit_log.jsonl, redline/analysis/semantic.py, tasks/, vault/
+- **Cost**: $0.2622
+- **Timestamp**: 2026-03-22 05:49 UTC

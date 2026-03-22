@@ -29,10 +29,20 @@ def is_available() -> bool:
     if _available is not None:
         return _available
     try:
+        # torch import can cause a fatal access violation on some
+        # Windows / Python 3.13 setups.  Test in a subprocess first
+        # so a crash there doesn't kill this process.
+        import subprocess, sys
+        result = subprocess.run(
+            [sys.executable, "-c", "import torch"],
+            capture_output=True, timeout=30,
+        )
+        if result.returncode != 0:
+            raise ImportError("torch crashes on import")
         import numpy  # noqa: F401
         import sentence_transformers  # noqa: F401
         _available = True
-    except (ImportError, OSError, Exception) as exc:
+    except (ImportError, subprocess.TimeoutExpired, OSError) as exc:
         logger.info("Semantic diff unavailable (%s); will use SequenceMatcher", exc)
         _available = False
     return _available
