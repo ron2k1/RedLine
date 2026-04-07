@@ -1,21 +1,21 @@
 # RedLine
 
-**Automated SEC filing change detection and risk intelligence platform.** Monitors any publicly traded company on EDGAR, performs sentence-level diffing across 10-K/10-Q filings, flags material changes using pattern-based signal detection, scores and surfaces risk via local LLM analysis — all running locally with zero paid API dependencies.
+**Automated SEC filing change detection and risk intelligence platform.** Monitors any publicly traded company on EDGAR, performs sentence-level diffing across 10-K/10-Q filings, flags material changes using pattern-based signal detection, scores and surfaces risk via local LLM analysis -- all running locally with zero paid API dependencies.
 
 ## What It Does
 
-- **Universal coverage** — track any SEC-reporting company by ticker; add one or a thousand
-- **Deep extraction** — pulls Risk Factors (1A), MD&A (7), Legal Proceedings (3), and Controls & Procedures (9A) from every filing
-- **Two-mode sentence diffing** — semantic diff via sentence embeddings (primary) with SequenceMatcher fallback
-- **9 financial red flag detectors** — going concern, restatement, covenant violation, auditor change, material weakness, goodwill impairment, revenue recognition change, related-party transactions, litigation risk
-- **Two-stage scoring engine** — fast deterministic score gates expensive LLM calls; only material changes get deep analysis
-- **LLM analysis** — local Ollama integration produces structured severity assessments with cited reasoning via `instructor` + Pydantic
-- **Anomaly detection** — embedding drift detection flags when a section deviates significantly from its historical mean (z-score threshold)
-- **Trend analysis** — tracks score trajectories and pct_changed volatility across filings with linear regression slope; requires 4+ periods per ticker/section
-- **Real-time scheduler** — market-hours polling (9:30–16:00 ET weekdays) every 5 minutes with high-score alert logging to JSONL
-- **Crash-safe pipeline** — interrupted runs resume automatically; idempotent writes prevent duplicates
-- **5-year backfill** — first run per ticker builds a full historical baseline including paginated SEC submission fragments
-- **Web dashboard** — dark-themed Flask UI with color-coded risk scores, per-company filing timelines, drill-down diff views, trends overview, and watchlist management
+- **Universal coverage** -- track any SEC-reporting company by ticker; add one or a thousand
+- **Deep extraction** -- pulls Risk Factors (1A), MD&A (7), Legal Proceedings (3), and Controls & Procedures (9A) from every filing
+- **Two-mode sentence diffing** -- semantic diff via sentence embeddings (primary) with SequenceMatcher fallback
+- **9 financial red flag detectors** -- going concern, restatement, covenant violation, auditor change, material weakness, goodwill impairment, revenue recognition change, related-party transactions, litigation risk
+- **Two-stage scoring engine** -- fast deterministic score gates expensive LLM calls; only material changes get deep analysis
+- **LLM analysis** -- local Ollama integration produces structured severity assessments with cited reasoning via `instructor` + Pydantic
+- **Anomaly detection** -- embedding drift detection flags when a section deviates significantly from its historical mean (z-score threshold)
+- **Trend analysis** -- tracks score trajectories and pct_changed volatility across filings with linear regression slope; requires 4+ periods per ticker/section
+- **Real-time scheduler** -- market-hours polling (9:30-16:00 ET weekdays) every 5 minutes with high-score alert logging to JSONL
+- **Crash-safe pipeline** -- interrupted runs resume automatically; idempotent writes prevent duplicates
+- **5-year backfill** -- first run per ticker builds a full historical baseline including paginated SEC submission fragments
+- **Web dashboard** -- dark-themed Flask UI with color-coded risk scores, per-company filing timelines, drill-down diff views, trends overview, and watchlist management
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 # Copy and configure environment
 cp .env.example .env
-# Edit .env — set SEC_USER_AGENT (required by EDGAR)
+# Edit .env -- set SEC_USER_AGENT (required by EDGAR)
 
 # Initialize database
 python -c "from redline.data.storage import init_db; init_db()"
@@ -47,7 +47,7 @@ Copy `.env.example` to `.env` and set:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `SEC_USER_AGENT` | Yes | — | `"YourName your@email.com"` (required by EDGAR) |
+| `SEC_USER_AGENT` | Yes | -- | `"YourName your@email.com"` (required by EDGAR) |
 | `OLLAMA_HOST` | No | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | No | `qwen2.5:14b` | LLM model for analysis |
 | `DB_PATH` | No | `./redline.db` | SQLite database path |
@@ -74,26 +74,26 @@ redline/
 │   ├── models.py          # Shared data contracts: FilingRecord, DiffResult, SignalResult, TrendResult
 │   └── config.py          # All settings loaded from .env
 ├── ingestion/
-│   ├── edgar.py           # SEC EDGAR API — CIK resolution, filing fetch, pagination, rate limiting
+│   ├── edgar.py           # SEC EDGAR API -- CIK resolution, filing fetch, pagination, rate limiting
 │   └── extractor.py       # Section extraction from filing HTML (Item regex + HTML stripping)
 ├── analysis/
-│   ├── differ.py          # Sentence-level diffing — semantic (embeddings) with SequenceMatcher fallback
-│   ├── semantic.py        # Embedding engine — lazy-loads sentence-transformers, greedy bipartite matching
+│   ├── differ.py          # Sentence-level diffing -- semantic (embeddings) with SequenceMatcher fallback
+│   ├── semantic.py        # Embedding engine -- lazy-loads sentence-transformers, greedy bipartite matching
 │   ├── signals.py         # 9 financial red flag pattern detectors (word-bounded regex)
-│   ├── scorer.py          # preliminary_score() and final_score() — sole scoring authority
+│   ├── scorer.py          # preliminary_score() and final_score() -- sole scoring authority
 │   ├── analyzer.py        # LLM analysis via Ollama + instructor (structured Pydantic output)
-│   ├── anomaly.py         # Embedding drift detection — cosine distance z-score against history
+│   ├── anomaly.py         # Embedding drift detection -- cosine distance z-score against history
 │   └── trends.py          # Score trajectory + pct_changed volatility (linear regression, 4+ periods)
 ├── data/
-│   ├── storage.py         # SQLite access layer — 7 tables, WAL mode, parameterized queries, migrations
-│   └── watchlist.py       # Ticker watchlist management — normalize, validate, atomic writes
-├── pipeline.py            # Master orchestration — backfill, poll, crash-resume
+│   ├── storage.py         # SQLite access layer -- 7 tables, WAL mode, parameterized queries, migrations
+│   └── watchlist.py       # Ticker watchlist management -- normalize, validate, atomic writes
+├── pipeline.py            # Master orchestration -- backfill, poll, crash-resume
 ├── scheduler/
-│   ├── polling.py         # Real-time EDGAR polling — market hours logic, poll_once(), run_scheduler()
+│   ├── polling.py         # Real-time EDGAR polling -- market hours logic, poll_once(), run_scheduler()
 │   ├── alerts.py          # Alert logging to JSONL for high-score diffs
 │   └── __main__.py        # Entry point: python -m redline.scheduler
 ├── web/
-│   ├── app.py             # Flask UI — dashboard, company, diff detail, trends, watchlist
+│   ├── app.py             # Flask UI -- dashboard, company, diff detail, trends, watchlist
 │   ├── templates/         # Jinja2 templates (6 pages)
 │   └── static/style.css   # Dark theme CSS
 └── tests/                 # 172 tests across all modules
@@ -108,7 +108,7 @@ Watchlist → EDGAR Fetch → Section Extraction → Sentence Diff (semantic or 
          → SQLite Storage → Trend Update → Web Dashboard / Alerts
 ```
 
-- **Backfill mode**: triggered when `get_filing_count(cik, form_type) == 0` — fetches up to 5 years including paginated SEC submission fragment files
+- **Backfill mode**: triggered when `get_filing_count(cik, form_type) == 0` -- fetches up to 5 years including paginated SEC submission fragment files
 - **Poll mode**: subsequent runs fetch only filings not yet in the database
 - **Crash recovery**: filings with `processed=0` in the database are resumed before any new polling
 - **Real-time mode**: the scheduler runs `poll_once()` every 5 minutes during market hours; diffs scoring at or above `ALERT_SCORE_THRESHOLD` are appended to `alerts/alerts.jsonl`
@@ -120,9 +120,9 @@ Watchlist → EDGAR Fetch → Section Extraction → Sentence Diff (semantic or 
 | Table | Purpose |
 |---|---|
 | `companies` | CIK, ticker, company name |
-| `filings` | Filing metadata — form type, period, URL, processed flag |
+| `filings` | Filing metadata -- form type, period, URL, processed flag |
 | `sections` | Extracted plain text per filing + section |
-| `diffs` | Diff results — scores, signal flags, LLM output, semantic metadata |
+| `diffs` | Diff results -- scores, signal flags, LLM output, semantic metadata |
 | `extraction_attempts` | Status per filing/section (success/failed/not_found) |
 | `section_embeddings` | Mean sentence embeddings per filing/section for anomaly detection |
 | `trends` | Score trajectory and pct_changed volatility per ticker/form_type/section |
@@ -147,13 +147,13 @@ All patterns use `\b` word boundaries, non-capturing groups for SEC wording vari
 
 ## Scoring
 
-**Preliminary score** (1–10): deterministic, fast.
-- Base from `pct_changed` thresholds: `<5%→1`, `<15%→2`, `<30%→3`, `<50%→5`, `>=50%→6`
+**Preliminary score** (1-10): deterministic, fast.
+- Base from `pct_changed` thresholds: `<5%->1`, `<15%->2`, `<30%->3`, `<50%->5`, `>=50%->6`
 - Signal boost: `max_severity // 2` when any signals fired
-- Going-concern override: any signal with severity ≥ 9 floors the score at 7
+- Going-concern override: any signal with severity >= 9 floors the score at 7
 - Result clamped to `[1, 10]`
 
-**Final score** (1–10): blends preliminary (40%) with LLM severity (60%) when LLM ran. If Ollama is unavailable or the preliminary score is below threshold, final score equals preliminary.
+**Final score** (1-10): blends preliminary (40%) with LLM severity (60%) when LLM ran. If Ollama is unavailable or the preliminary score is below threshold, final score equals preliminary.
 
 ## Semantic Diff
 
@@ -162,10 +162,10 @@ The semantic differ (`analysis/semantic.py`) uses greedy bipartite matching on s
 1. Encode old and new sentences with `sentence-transformers` (default: `all-MiniLM-L6-v2`)
 2. Build cosine similarity matrix between all pairs
 3. Greedily match highest-similarity pairs first (each sentence matched at most once)
-4. Classify matches: similarity ≥ `SEMANTIC_UNCHANGED_THRESHOLD` → unchanged; between thresholds → modified; unmatched → added/deleted
+4. Classify matches: similarity >= `SEMANTIC_UNCHANGED_THRESHOLD` -> unchanged; between thresholds -> modified; unmatched -> added/deleted
 5. Store per-filing mean embedding in `section_embeddings` for anomaly detection
 
-Falls back to `difflib.SequenceMatcher` if `torch` is unavailable, imports fail, or `SEMANTIC_DIFF_ENABLED=false`. The fallback engages automatically — no configuration needed.
+Falls back to `difflib.SequenceMatcher` if `torch` is unavailable, imports fail, or `SEMANTIC_DIFF_ENABLED=false`. The fallback engages automatically -- no configuration needed.
 
 ## Anomaly Detection
 
@@ -174,9 +174,9 @@ After each section is processed, `analysis/anomaly.py` computes cosine distance 
 ## Trend Analysis
 
 `analysis/trends.py` computes per-(ticker, form_type, section) trend metrics after each filing is processed. Requires 4+ periods. Metrics include:
-- `score_slope` — linear regression slope over time (positive = worsening)
-- `direction` — `improving` / `stable` / `worsening` based on slope thresholds (±0.3)
-- `volatile` — True if pct_changed standard deviation > 0.10
+- `score_slope` -- linear regression slope over time (positive = worsening)
+- `direction` -- `improving` / `stable` / `worsening` based on slope thresholds (+/-0.3)
+- `volatile` -- True if pct_changed standard deviation > 0.10
 - Full score and pct_changed time-series stored as JSON for the trends UI
 
 ## Commands
@@ -196,11 +196,11 @@ pytest redline/tests/test_signals.py    # Single module
 powershell -ExecutionPolicy Bypass -File scheduler\setup_task.ps1
 ```
 
-The real-time scheduler (`python -m redline.scheduler`) is an alternative — polls continuously during market hours (9:30–16:00 ET, weekdays) and sleeps until the next open otherwise.
+The real-time scheduler (`python -m redline.scheduler`) is an alternative -- polls continuously during market hours (9:30-16:00 ET, weekdays) and sleeps until the next open otherwise.
 
 ## Watchlist
 
-Ships with 20 default tickers across sectors — tech, finance, pharma, energy, aerospace. Add any SEC-reporting ticker through the web UI at `/watchlist` or edit `watchlist.json` directly. Tickers like `BRK.B` are automatically normalized to SEC format (`BRK-B`). The watchlist file is written atomically (`tempfile` + `os.replace`) to prevent corruption.
+Ships with 20 default tickers across sectors -- tech, finance, pharma, energy, aerospace. Add any SEC-reporting ticker through the web UI at `/watchlist` or edit `watchlist.json` directly. Tickers like `BRK.B` are automatically normalized to SEC format (`BRK-B`). The watchlist file is written atomically (`tempfile` + `os.replace`) to prevent corruption.
 
 ## Tests
 
@@ -226,10 +226,10 @@ pytest redline/tests/ -v
 
 ## Tech Stack
 
-- **Python 3.11+** — uses `list[str]`, `dict | None`, `str | None` type hints throughout
-- **SQLite** — WAL mode, 7 tables, parameterized queries only, idempotent migrations
-- **Flask** — pure server-side HTML/CSS web UI (no JavaScript frameworks)
-- **sentence-transformers + scikit-learn** — local sentence embedding model for semantic diff and anomaly detection
-- **Ollama + instructor + Pydantic** — structured LLM output via local model (no cloud API)
-- **requests + edgartools** — EDGAR HTTP client with rate limiting and exponential backoff on 429s
-- **pytest** — 172 tests, all mocked, no network required
+- **Python 3.11+** -- uses `list[str]`, `dict | None`, `str | None` type hints throughout
+- **SQLite** -- WAL mode, 7 tables, parameterized queries only, idempotent migrations
+- **Flask** -- pure server-side HTML/CSS web UI (no JavaScript frameworks)
+- **sentence-transformers + scikit-learn** -- local sentence embedding model for semantic diff and anomaly detection
+- **Ollama + instructor + Pydantic** -- structured LLM output via local model (no cloud API)
+- **requests + edgartools** -- EDGAR HTTP client with rate limiting and exponential backoff on 429s
+- **pytest** -- 172 tests, all mocked, no network required
