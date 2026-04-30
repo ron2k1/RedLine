@@ -1,5 +1,7 @@
 # RedLine
 
+[![GitTok — vertical demo videos of finished GitHub projects](https://dev.gittok.net/og/readme-card.svg)](https://dev.gittok.net/feed)
+
 **Automated SEC filing change detection and risk intelligence platform.** Monitors any publicly traded company on EDGAR, performs sentence-level diffing across 10-K/10-Q filings, flags material changes using pattern-based signal detection, scores and surfaces risk via local LLM analysis -- all running locally with zero paid API dependencies.
 
 ## What It Does
